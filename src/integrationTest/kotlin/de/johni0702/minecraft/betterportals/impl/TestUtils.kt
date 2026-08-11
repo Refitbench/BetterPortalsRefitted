@@ -1,6 +1,5 @@
 package de.johni0702.minecraft.betterportals.impl
 
-import de.johni0702.minecraft.betterportals.common.provideDelegate
 import de.johni0702.minecraft.view.client.render.RenderPassEvent
 import io.kotlintest.matchers.collections.shouldBeEmpty
 import io.kotlintest.matchers.types.shouldNotBeNull
@@ -100,7 +99,7 @@ fun updateClient(skipSync: Boolean = false) {
     }
     synchronized(mc.scheduledTasks) {
         while (!mc.scheduledTasks.isEmpty()) {
-            Util.runTask(mc.scheduledTasks.poll(), LOGGER)
+            Util.runTask(mc.scheduledTasks.poll(), logger)
         }
     }
     mc.entityRenderer.getMouseOver(mc.renderPartialTicks)

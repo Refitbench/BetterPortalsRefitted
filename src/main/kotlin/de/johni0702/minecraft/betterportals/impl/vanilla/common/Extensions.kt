@@ -33,14 +33,14 @@ internal lateinit var NETHER_PORTAL_CONFIG: PortalConfiguration
 internal lateinit var END_PORTAL_CONFIG: PortalConfiguration
 
 fun initVanilla(
-        mod: Any,
-        clientPreInit: (() -> Unit) -> Unit,
-        init: (() -> Unit) -> Unit,
-        registerBlocks: (IForgeRegistry<Block>.() -> Unit) -> Unit,
-        enableNetherPortals: Boolean,
-        enableEndPortals: Boolean,
-        configNetherPortals: PortalConfiguration,
-        configEndPortals: PortalConfiguration
+    mod: Any,
+    clientPreInit: (() -> Unit) -> Unit,
+    init: (() -> Unit) -> Unit,
+    registerBlocks: (IForgeRegistry<Block>.() -> Unit) -> Unit,
+    enableNetherPortals: Boolean,
+    enableEndPortals: Boolean,
+    configNetherPortals: PortalConfiguration,
+    configEndPortals: PortalConfiguration,
 ) {
     NETHER_PORTAL_CONFIG = configNetherPortals
     END_PORTAL_CONFIG = configEndPortals
@@ -48,9 +48,12 @@ fun initVanilla(
     clientPreInit {
         if (enableNetherPortals) {
             RenderingRegistry.registerEntityRenderingHandler(NetherPortalEntity::class.java) {
-                RenderPortalEntity(it, FramedPortalRenderer(configNetherPortals.opacity, {
-                    Minecraft.getMinecraft().textureMapBlocks.getAtlasSprite("minecraft:blocks/portal")
-                }))
+                RenderPortalEntity(
+                    it,
+                    FramedPortalRenderer(configNetherPortals.opacity, {
+                        Minecraft.getMinecraft().textureMapBlocks.getAtlasSprite("minecraft:blocks/portal")
+                    }),
+                )
             }
         }
         if (enableEndPortals) {
@@ -75,53 +78,57 @@ fun initVanilla(
     init {
         if (enableNetherPortals) {
             EntityRegistry.registerModEntity(
-                    ResourceLocation(MOD_ID, "nether_portal"),
-                    NetherPortalEntity::class.java,
-                    "nether_portal",
-                    0,
-                    mod,
-                    256,
-                    Int.MAX_VALUE,
-                    false
+                ResourceLocation(MOD_ID, "nether_portal"),
+                NetherPortalEntity::class.java,
+                "nether_portal",
+                0,
+                mod,
+                256,
+                Int.MAX_VALUE,
+                false,
             )
-            MinecraftForge.EVENT_BUS.register(object {
-                @SubscribeEvent
-                fun onWorld(event: WorldEvent.Load) {
-                    val world = event.world
-                    event.world.portalManager.registerPortals(PortalEntityAccessor(NetherPortalEntity::class.java, world))
-                }
-            })
+            MinecraftForge.EVENT_BUS.register(
+                object {
+                    @SubscribeEvent
+                    fun onWorld(event: WorldEvent.Load) {
+                        val world = event.world
+                        event.world.portalManager.registerPortals(PortalEntityAccessor(NetherPortalEntity::class.java, world))
+                    }
+                },
+            )
         }
         if (enableEndPortals) {
             EntityRegistry.registerModEntity(
-                    ResourceLocation(MOD_ID, "end_entry_portal"),
-                    EndEntryPortalEntity::class.java,
-                    "end_entry_portal",
-                    1,
-                    mod,
-                    256,
-                    Int.MAX_VALUE,
-                    false
+                ResourceLocation(MOD_ID, "end_entry_portal"),
+                EndEntryPortalEntity::class.java,
+                "end_entry_portal",
+                1,
+                mod,
+                256,
+                Int.MAX_VALUE,
+                false,
             )
             EntityRegistry.registerModEntity(
-                    ResourceLocation(MOD_ID, "end_exit_portal"),
-                    EndExitPortalEntity::class.java,
-                    "end_exit_portal",
-                    2,
-                    mod,
-                    256,
-                    Int.MAX_VALUE,
-                    false
+                ResourceLocation(MOD_ID, "end_exit_portal"),
+                EndExitPortalEntity::class.java,
+                "end_exit_portal",
+                2,
+                mod,
+                256,
+                Int.MAX_VALUE,
+                false,
             )
-            MinecraftForge.EVENT_BUS.register(object {
-                @SubscribeEvent
-                fun onWorld(event: WorldEvent.Load) {
-                    val world = event.world
-                    val portalManager = event.world.portalManager
-                    portalManager.registerPortals(PortalEntityAccessor(EndEntryPortalEntity::class.java, world))
-                    portalManager.registerPortals(PortalEntityAccessor(EndExitPortalEntity::class.java, world))
-                }
-            })
+            MinecraftForge.EVENT_BUS.register(
+                object {
+                    @SubscribeEvent
+                    fun onWorld(event: WorldEvent.Load) {
+                        val world = event.world
+                        val portalManager = event.world.portalManager
+                        portalManager.registerPortals(PortalEntityAccessor(EndEntryPortalEntity::class.java, world))
+                        portalManager.registerPortals(PortalEntityAccessor(EndExitPortalEntity::class.java, world))
+                    }
+                },
+            )
         }
     }
 }

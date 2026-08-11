@@ -20,12 +20,12 @@ internal lateinit var preventFallDamageGetter: () -> Boolean
 internal lateinit var maxRenderRecursionGetter: () -> Int
 
 fun initPortal(
-        mod: Any,
-        init: (() -> Unit) -> Unit,
-        clientInit: (() -> Unit) -> Unit,
-        preventFallDamage: () -> Boolean,
-        dropRemoteSound: () -> Boolean,
-        maxRenderRecursion: () -> Int
+    mod: Any,
+    init: (() -> Unit) -> Unit,
+    clientInit: (() -> Unit) -> Unit,
+    preventFallDamage: () -> Boolean,
+    dropRemoteSound: () -> Boolean,
+    maxRenderRecursion: () -> Int,
 ) {
     preventFallDamageGetter = preventFallDamage
     maxRenderRecursionGetter = maxRenderRecursion
@@ -45,19 +45,31 @@ fun initPortal(
     }
 }
 
-internal fun MessageContext.sync(task: () -> Unit) = when(side!!) {
-    Side.CLIENT -> syncOnClient(task)
-    Side.SERVER -> syncOnServer(task)
-}
+internal fun MessageContext.sync(task: () -> Unit) =
+    when (side!!) {
+        Side.CLIENT -> syncOnClient(task)
+        Side.SERVER -> syncOnServer(task)
+    }
+
 // Note: must be in separate method so we can access client-only methods/classes
 private fun syncOnClient(task: () -> Unit) = Minecraft.getMinecraft().addScheduledTask(task).logFailure()
-private fun MessageContext.syncOnServer(task: () -> Unit) = serverHandler.player.serverWorld.server.addScheduledTask(task).logFailure()
+
+private fun MessageContext.syncOnServer(task: () -> Unit) =
+    serverHandler.player.serverWorld.server
+        .addScheduledTask(task)
+        .logFailure()
+
 internal fun <L : ListenableFuture<T>, T> L.logFailure(): L {
-    Futures.addCallback(this, object : FutureCallback<T> {
-        override fun onSuccess(result: T) = Unit
-        override fun onFailure(t: Throwable) {
-            LOGGER.error("Failed future:", t)
-        }
-    }, Runnable::run)
+    Futures.addCallback(
+        this,
+        object : FutureCallback<T> {
+            override fun onSuccess(result: T) = Unit
+
+            override fun onFailure(t: Throwable) {
+                LOGGER.error("Failed future:", t)
+            }
+        },
+        Runnable::run,
+    )
     return this
 }

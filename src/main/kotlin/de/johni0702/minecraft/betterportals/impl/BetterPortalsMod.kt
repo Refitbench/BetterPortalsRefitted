@@ -15,8 +15,8 @@ import net.minecraft.client.resources.IResourcePack
 import net.minecraftforge.common.MinecraftForge
 import net.minecraftforge.common.config.Config
 import net.minecraftforge.common.config.ConfigManager
-import net.minecraftforge.fml.common.Loader
 import net.minecraftforge.event.RegistryEvent
+import net.minecraftforge.fml.common.Loader
 import net.minecraftforge.fml.common.Mod
 import net.minecraftforge.fml.common.SidedProxy
 import net.minecraftforge.fml.common.event.FMLInitializationEvent
@@ -30,11 +30,17 @@ import java.io.File
 
 const val MOD_ID = "betterportals"
 
-lateinit var LOGGER: Logger
+lateinit var logger: Logger
 
-@Mod(modid = MOD_ID, useMetadata = true, version = Reference.VERSION, modLanguage = "kotlin", modLanguageAdapter = "io.github.chaosunity.forgelin.KotlinAdapter", dependencies = "required-after:forgelin_continuous")
-object BetterPortalsMod: ViewAPI by ViewAPIImpl, BetterPortalsAPI by BetterPortalsAPIImpl {
-
+@Mod(
+    modid = MOD_ID,
+    useMetadata = true,
+    version = Reference.VERSION,
+    modLanguage = "kotlin",
+    modLanguageAdapter = "io.github.chaosunity.forgelin.KotlinAdapter",
+    dependencies = "required-after:forgelin_continuous",
+)
+object BetterPortalsMod : ViewAPI by ViewAPIImpl, BetterPortalsAPI by BetterPortalsAPIImpl {
     internal val clientPreInitCallbacks = mutableListOf<() -> Unit>()
     internal val commonInitCallbacks = mutableListOf<() -> Unit>()
     internal val clientInitCallbacks = mutableListOf<() -> Unit>()
@@ -43,102 +49,103 @@ object BetterPortalsMod: ViewAPI by ViewAPIImpl, BetterPortalsAPI by BetterPorta
     private val registerBlockCallbacks = mutableListOf<IForgeRegistry<Block>.() -> Unit>()
 
     init {
-        ConfigManager.sync(MOD_ID, Config.Type.INSTANCE);
+        ConfigManager.sync(MOD_ID, Config.Type.INSTANCE)
 
-        fun PortalConfig.toConfiguration() = PortalConfiguration(
+        fun PortalConfig.toConfiguration() =
+            PortalConfiguration(
                 { opacity },
                 { renderDistMin },
                 { renderDistMax },
-                { renderDistSizeMultiplier }
-        )
+                { renderDistSizeMultiplier },
+            )
 
         initView(
-                init = { commonInitCallbacks.add(it) },
-                clientInit = { clientInitCallbacks.add(it) },
-                debugView = { BPConfig.debugView },
-                debugLogging = { BPConfig.debugLogging }
+            init = { commonInitCallbacks.add(it) },
+            clientInit = { clientInitCallbacks.add(it) },
+            debugView = { BPConfig.debugView },
+            debugLogging = { BPConfig.debugLogging },
         )
 
         initTransition(
-                init = { commonInitCallbacks.add(it) },
-                enable = BPConfig.enhanceThirdPartyTransfers,
-                duration = { BPConfig.enhancedThirdPartyTransferSeconds }
+            init = { commonInitCallbacks.add(it) },
+            enable = BPConfig.enhanceThirdPartyTransfers,
+            duration = { BPConfig.enhancedThirdPartyTransferSeconds },
         )
 
         initPortal(
-                mod = this,
-                init = { commonInitCallbacks.add(it) },
-                clientInit = { clientInitCallbacks.add(it) },
-                preventFallDamage = { BPConfig.preventFallDamage },
-                dropRemoteSound = { !BPConfig.soundThroughPortals },
-                maxRenderRecursion = { if (BPConfig.seeThroughPortals) BPConfig.recursionLimit else 0 }
+            mod = this,
+            init = { commonInitCallbacks.add(it) },
+            clientInit = { clientInitCallbacks.add(it) },
+            preventFallDamage = { BPConfig.preventFallDamage },
+            dropRemoteSound = { !BPConfig.soundThroughPortals },
+            maxRenderRecursion = { if (BPConfig.seeThroughPortals) BPConfig.recursionLimit else 0 },
         )
 
         initVanilla(
-                mod = this,
-                init = { commonInitCallbacks.add(it) },
-                clientPreInit = { clientPreInitCallbacks.add(it) },
-                registerBlocks = { registerBlockCallbacks.add(it) },
-                enableNetherPortals = BPConfig.netherPortals.enabled,
-                enableEndPortals = BPConfig.endPortals.enabled,
-                configNetherPortals = BPConfig.netherPortals.toConfiguration(),
-                configEndPortals = BPConfig.endPortals.toConfiguration()
+            mod = this,
+            init = { commonInitCallbacks.add(it) },
+            clientPreInit = { clientPreInitCallbacks.add(it) },
+            registerBlocks = { registerBlockCallbacks.add(it) },
+            enableNetherPortals = BPConfig.netherPortals.enabled,
+            enableEndPortals = BPConfig.endPortals.enabled,
+            configNetherPortals = BPConfig.netherPortals.toConfiguration(),
+            configEndPortals = BPConfig.endPortals.toConfiguration(),
         )
 
         if (BPConfig.twilightForestPortals.enabled && Loader.isModLoaded("twilightforest")) {
             de.johni0702.minecraft.betterportals.impl.tf.common.initTwilightForest(
-                    mod = this,
-                    init = { commonInitCallbacks.add(it) },
-                    clientPreInit = { clientPreInitCallbacks.add(it) },
-                    registerBlocks = { registerBlockCallbacks.add(it) },
-                    configTwilightForestPortals = BPConfig.twilightForestPortals.toConfiguration()
+                mod = this,
+                init = { commonInitCallbacks.add(it) },
+                clientPreInit = { clientPreInitCallbacks.add(it) },
+                registerBlocks = { registerBlockCallbacks.add(it) },
+                configTwilightForestPortals = BPConfig.twilightForestPortals.toConfiguration(),
             )
         }
 
         if (BPConfig.mekanismPortals.enabled && Loader.isModLoaded("mekanism")) {
             de.johni0702.minecraft.betterportals.impl.mekanism.common.initMekanism(
-                    init = { commonInitCallbacks.add(it) },
-                    postInit = { commonPostInitCallbacks.add(it) },
-                    clientPostInit = { clientPostInitCallbacks.add(it) },
-                    configMekanismPortals = BPConfig.mekanismPortals.toConfiguration()
+                init = { commonInitCallbacks.add(it) },
+                postInit = { commonPostInitCallbacks.add(it) },
+                clientPostInit = { clientPostInitCallbacks.add(it) },
+                configMekanismPortals = BPConfig.mekanismPortals.toConfiguration(),
             )
         }
 
         if (BPConfig.aetherPortals.enabled && Loader.isModLoaded("aether_legacy")) {
             de.johni0702.minecraft.betterportals.impl.aether.common.initAether(
-                    mod = this,
-                    init = { commonInitCallbacks.add(it) },
-                    clientPreInit = { clientPreInitCallbacks.add(it) },
-                    registerBlocks = { registerBlockCallbacks.add(it) },
-                    configAetherPortals = BPConfig.aetherPortals.toConfiguration()
+                mod = this,
+                init = { commonInitCallbacks.add(it) },
+                clientPreInit = { clientPreInitCallbacks.add(it) },
+                registerBlocks = { registerBlockCallbacks.add(it) },
+                configAetherPortals = BPConfig.aetherPortals.toConfiguration(),
             )
         }
 
         if (BPConfig.abyssalcraftPortals.enabled && Loader.isModLoaded("abyssalcraft")) {
             de.johni0702.minecraft.betterportals.impl.abyssalcraft.common.initAbyssalcraft(
-                    mod = this,
-                    init = { commonInitCallbacks.add(it) },
-                    clientPreInit = { clientPreInitCallbacks.add(it) },
-                    registerBlocks = { registerBlockCallbacks.add(it) },
-                    configAbyssalcraftPortals = BPConfig.abyssalcraftPortals.toConfiguration()
+                mod = this,
+                init = { commonInitCallbacks.add(it) },
+                clientPreInit = { clientPreInitCallbacks.add(it) },
+                registerBlocks = { registerBlockCallbacks.add(it) },
+                configAbyssalcraftPortals = BPConfig.abyssalcraftPortals.toConfiguration(),
             )
         }
 
         if (BPConfig.travelHutsPortals.enabled && Loader.isModLoaded("travelhut")) {
             de.johni0702.minecraft.betterportals.impl.travelhuts.common.initTravelHuts(
-                    mod = this,
-                    init = { commonInitCallbacks.add(it) },
-                    clientPreInit = { clientPreInitCallbacks.add(it) },
-                    registerBlocks = { registerBlockCallbacks.add(it) },
-                    configTravelHutsPortals = BPConfig.travelHutsPortals.toConfiguration()
+                mod = this,
+                init = { commonInitCallbacks.add(it) },
+                clientPreInit = { clientPreInitCallbacks.add(it) },
+                registerBlocks = { registerBlockCallbacks.add(it) },
+                configTravelHutsPortals = BPConfig.travelHutsPortals.toConfiguration(),
             )
         }
     }
 
     @Mod.EventHandler
     fun preInit(event: FMLPreInitializationEvent) {
-        LOGGER = event.modLog
-        PROXY.preInit(this)
+        logger = event.modLog
+        proxy.preInit(this)
 
         MinecraftForge.EVENT_BUS.register(this)
     }
@@ -152,17 +159,19 @@ object BetterPortalsMod: ViewAPI by ViewAPIImpl, BetterPortalsAPI by BetterPorta
 
     @Mod.EventHandler
     fun init(event: FMLInitializationEvent) {
-        PROXY.init(this)
+        proxy.init(this)
     }
 
     @Mod.EventHandler
     fun preInit(event: FMLPostInitializationEvent) {
-        PROXY.postInit(this)
+        proxy.postInit(this)
     }
 
     interface Proxy {
         fun preInit(mod: BetterPortalsMod)
+
         fun init(mod: BetterPortalsMod)
+
         fun postInit(mod: BetterPortalsMod)
     }
 
@@ -198,10 +207,12 @@ object BetterPortalsMod: ViewAPI by ViewAPIImpl, BetterPortalsAPI by BetterPorta
                 if (root != null) {
                     val mc = Minecraft.getMinecraft()
                     @Suppress("UNCHECKED_CAST")
-                    (field.get(mc) as MutableList<IResourcePack>).addAll(listOf(
+                    (field.get(mc) as MutableList<IResourcePack>).addAll(
+                        listOf(
                             "portal",
-                            "transition"
-                    ).map { FolderResourcePack(File(root, "src/$it/resources")) })
+                            "transition",
+                        ).map { FolderResourcePack(File(root, "src/$it/resources")) },
+                    )
                 }
             } catch (ignored: NoSuchFieldException) {
             }
@@ -222,6 +233,10 @@ object BetterPortalsMod: ViewAPI by ViewAPIImpl, BetterPortalsAPI by BetterPorta
         }
     }
 
-    @SidedProxy(modId = MOD_ID, serverSide = $$"de.johni0702.minecraft.betterportals.impl.BetterPortalsMod$ServerProxy", clientSide = $$"de.johni0702.minecraft.betterportals.impl.BetterPortalsMod$ClientProxy")
-    lateinit var PROXY: Proxy
+    @SidedProxy(
+        modId = MOD_ID,
+        serverSide = $$"de.johni0702.minecraft.betterportals.impl.BetterPortalsMod$ServerProxy",
+        clientSide = $$"de.johni0702.minecraft.betterportals.impl.BetterPortalsMod$ClientProxy",
+    )
+    lateinit var proxy: Proxy
 }

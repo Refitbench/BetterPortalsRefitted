@@ -1,7 +1,17 @@
 package de.johni0702.minecraft.betterportals.impl.common
 
-import de.johni0702.minecraft.betterportals.common.*
-import de.johni0702.minecraft.betterportals.impl.net.*
+import de.johni0702.minecraft.betterportals.common.PortalAccessor
+import de.johni0702.minecraft.betterportals.common.PortalAgent
+import de.johni0702.minecraft.betterportals.common.PortalManager
+import de.johni0702.minecraft.betterportals.common.min
+import de.johni0702.minecraft.betterportals.common.portalManager
+import de.johni0702.minecraft.betterportals.common.provideDelegate
+import de.johni0702.minecraft.betterportals.common.times
+import de.johni0702.minecraft.betterportals.common.toBlockPos
+import de.johni0702.minecraft.betterportals.impl.net.EntityUsePortal
+import de.johni0702.minecraft.betterportals.impl.net.Net
+import de.johni0702.minecraft.betterportals.impl.net.UsePortal
+import de.johni0702.minecraft.betterportals.impl.net.toPacket
 import de.johni0702.minecraft.view.client.worldsManager
 import de.johni0702.minecraft.view.server.ServerWorldsManager
 import net.minecraft.block.material.Material
@@ -25,7 +35,9 @@ internal interface HasPortalManager {
     val portalManager: PortalManager
 }
 
-internal class PortalManagerImpl(override val world: World) : PortalManager {
+internal class PortalManagerImpl(
+    override val world: World,
+) : PortalManager {
     override val logger: Logger = LOGGER
     override val preventFallAfterVerticalPortal get() = preventFallDamageGetter()
 
@@ -35,17 +47,19 @@ internal class PortalManagerImpl(override val world: World) : PortalManager {
 
     // The slow ones which need polling
     private val passiveAccessorPortals = passiveAccessors.asSequence().flatMap { it.loadedPortals.asSequence() }
+
     // The fast ones which will notify us on any changes and therefore allow for caching
-    private var activeAccessorPortals = Sequence {
-        if (activeAccessorPortalsDirty) {
-            activeAccessorPortalsCache.clear()
-            activeAccessors.forEach {
-                activeAccessorPortalsCache.addAll(it.loadedPortals)
+    private var activeAccessorPortals =
+        Sequence {
+            if (activeAccessorPortalsDirty) {
+                activeAccessorPortalsCache.clear()
+                activeAccessors.forEach {
+                    activeAccessorPortalsCache.addAll(it.loadedPortals)
+                }
+                activeAccessorPortalsDirty = false
             }
-            activeAccessorPortalsDirty = false
+            activeAccessorPortalsCache.iterator()
         }
-        activeAccessorPortalsCache.iterator()
-    }
     private var activeAccessorPortalsCache = mutableListOf<PortalAgent<*>>()
     private var activeAccessorPortalsDirty = true
 
@@ -75,12 +89,20 @@ internal class PortalManagerImpl(override val world: World) : PortalManager {
         Net.INSTANCE.sendToServer(UsePortal(agent.id))
     }
 
-    override fun serverBeforeUsePortal(agent: PortalAgent<*>, oldEntity: Entity, trackingPlayers: Iterable<ServerWorldsManager>) {
+    override fun serverBeforeUsePortal(
+        agent: PortalAgent<*>,
+        oldEntity: Entity,
+        trackingPlayers: Iterable<ServerWorldsManager>,
+    ) {
         val packet = EntityUsePortal(EntityUsePortal.Phase.BEFORE, oldEntity.entityId, agent.id).toPacket()
         trackingPlayers.forEach { it.sendPacket(agent.world as WorldServer, packet) }
     }
 
-    override fun serverAfterUsePortal(agent: PortalAgent<*>, newEntity: Entity, trackingPlayers: Iterable<ServerWorldsManager>) {
+    override fun serverAfterUsePortal(
+        agent: PortalAgent<*>,
+        newEntity: Entity,
+        trackingPlayers: Iterable<ServerWorldsManager>,
+    ) {
         val packet = EntityUsePortal(EntityUsePortal.Phase.AFTER, newEntity.entityId, agent.id).toPacket()
         trackingPlayers.forEach { it.sendPacket(agent.world as WorldServer, packet) }
     }
@@ -109,10 +131,12 @@ internal class PortalManagerImpl(override val world: World) : PortalManager {
         }
 
         private fun tickWorld(world: World) {
-            world.portalManager.loadedPortals.toList().forEach { it.checkTeleportees() }
+            world.portalManager.loadedPortals
+                .toList()
+                .forEach { it.checkTeleportees() }
             correctPortalPenetration(world)
         }
-        
+
         private fun correctPortalPenetration(world: World) {
             if (!world.isRemote) return
             val mc = Minecraft.getMinecraft()
@@ -120,13 +144,24 @@ internal class PortalManagerImpl(override val world: World) : PortalManager {
             if (player.noClip || player.isRiding) return
             if (player.world !== world) return
             val bb = player.entityBoundingBox
-            if (world.portalManager.loadedPortals.none { it.portal.localBoundingBox.grow(1.0).intersects(bb) }) return
+            if (world.portalManager.loadedPortals.none {
+                    it.portal.localBoundingBox
+                        .grow(1.0)
+                        .intersects(bb)
+                }
+            ) {
+                return
+            }
             if (world.getCollisionBoxes(null, bb).isEmpty()) return
-            val dirs = listOf(
-                Vec3d(0.1, 0.0, 0.0), Vec3d(-0.1, 0.0, 0.0),
-                Vec3d(0.0, 0.0, 0.1), Vec3d(0.0, 0.0, -0.1),
-                Vec3d(0.0, 0.1, 0.0), Vec3d(0.0, -0.1, 0.0)
-            )
+            val dirs =
+                listOf(
+                    Vec3d(0.1, 0.0, 0.0),
+                    Vec3d(-0.1, 0.0, 0.0),
+                    Vec3d(0.0, 0.0, 0.1),
+                    Vec3d(0.0, 0.0, -0.1),
+                    Vec3d(0.0, 0.1, 0.0),
+                    Vec3d(0.0, -0.1, 0.0),
+                )
             for (dir in dirs) {
                 var dist = 1.0
                 while (dist <= 3.0) {
@@ -154,7 +189,10 @@ internal class PortalManagerImpl(override val world: World) : PortalManager {
             }
         }
 
-        fun onIsOpenBlockSpace(entity: Entity, pos: BlockPos): Boolean {
+        fun onIsOpenBlockSpace(
+            entity: Entity,
+            pos: BlockPos,
+        ): Boolean {
             val query = { world: World, aabb: AxisAlignedBB ->
                 val blockPos = aabb.min.toBlockPos()
                 val blockState = world.getBlockState(blockPos)
@@ -170,11 +208,11 @@ internal class PortalManagerImpl(override val world: World) : PortalManager {
         }
 
         private fun modifyAABBs(
-                entity: Entity,
-                entityAABB: AxisAlignedBB,
-                queryAABB: AxisAlignedBB,
-                aabbList: MutableList<AxisAlignedBB>,
-                queryRemote: (World, AxisAlignedBB) -> List<AxisAlignedBB>
+            entity: Entity,
+            entityAABB: AxisAlignedBB,
+            queryAABB: AxisAlignedBB,
+            aabbList: MutableList<AxisAlignedBB>,
+            queryRemote: (World, AxisAlignedBB) -> List<AxisAlignedBB>,
         ) {
             entity.world.portalManager.loadedPortals.forEach { agent ->
                 val portal = agent.portal
@@ -186,7 +224,10 @@ internal class PortalManagerImpl(override val world: World) : PortalManager {
             }
         }
 
-        fun isInMaterial(entity: Entity, material: Material): Boolean? {
+        fun isInMaterial(
+            entity: Entity,
+            material: Material,
+        ): Boolean? {
             val entityAABB = entity.entityBoundingBox
             val queryAABB = entityAABB.grow(-0.1, -0.4, -0.1)
 
@@ -203,5 +244,4 @@ internal class PortalManagerImpl(override val world: World) : PortalManager {
             return null
         }
     }
-
 }
