@@ -21,6 +21,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 import javax.vecmath.Matrix4d;
 
+import static de.johni0702.minecraft.betterportals.common.ExtensionsKt.findPortal;
 import static de.johni0702.minecraft.betterportals.common.ExtensionsKt.getSyncPos;
 import static de.johni0702.minecraft.betterportals.common.ExtensionsKt.inverse;
 import static de.johni0702.minecraft.betterportals.common.ExtensionsKt.rayTraceBlocksWithPortals;
@@ -36,6 +37,30 @@ public abstract class MixinEntityRenderer {
     @Inject(method = "setupFog", at = @At("RETURN"))
     private void postSetupFogInView(int start, float partialTicks, CallbackInfo ci) {
         MinecraftForge.EVENT_BUS.post(new PostSetupFogEvent());
+    }
+
+    @Inject(method = "getMouseOver", at = @At("RETURN"))
+    private void blockInteractionThroughPortals(float partialTicks, CallbackInfo ci) {
+        RayTraceResult target = mc.objectMouseOver;
+        if (target == null || target.typeOfHit == RayTraceResult.Type.MISS || target.hitVec == null) {
+            return;
+        }
+        World world = mc.world;
+        Entity viewEntity = mc.getRenderViewEntity();
+        if (world == null || viewEntity == null) {
+            return;
+        }
+        // The mouse-over ray trace is (unlike the camera ray trace above) not portal-aware, so it passes right
+        // through the portal and hits whatever is behind it in the local world. That would allow the player to
+        // interact with local blocks/entities which are visually obscured by the portal (e.g. opening a chest or
+        // shearing a sheep located directly behind the portal), even though cross-portal interaction is not
+        // supported. Since the target is on the other side of the portal, cancel the interaction by making it a
+        // MISS so that the player cannot interact with anything through a portal.
+        Vec3d eyePos = viewEntity.getPositionEyes(partialTicks);
+        if (findPortal(world, eyePos, target.hitVec).getThird() != null) {
+            mc.objectMouseOver = new RayTraceResult(RayTraceResult.Type.MISS, target.hitVec, null, target.getBlockPos());
+            mc.pointedEntity = null;
+        }
     }
 
     @Redirect(
