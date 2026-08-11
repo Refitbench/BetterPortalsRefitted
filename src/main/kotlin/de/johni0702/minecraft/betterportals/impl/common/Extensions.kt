@@ -54,7 +54,7 @@ private fun syncOnClient(task: () -> Unit) = Minecraft.getMinecraft().addSchedul
 private fun MessageContext.syncOnServer(task: () -> Unit) = serverHandler.player.serverWorld.server.addScheduledTask(task).logFailure()
 internal fun <L : ListenableFuture<T>, T> L.logFailure(): L {
     Futures.addCallback(this, object : FutureCallback<T> {
-        override fun onSuccess(result: T?) = Unit
+        override fun onSuccess(result: T) = Unit
         override fun onFailure(t: Throwable) {
             LOGGER.error("Failed future:", t)
         }

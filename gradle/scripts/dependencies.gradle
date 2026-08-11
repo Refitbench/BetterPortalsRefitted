@@ -30,9 +30,8 @@ repositories {
 }
 
 dependencies {
-    compileOnly "com.cleanroommc:sponge-mixin:0.20.13+mixin.0.8.7"
     if (enable_lwjglx.toBoolean()) {
-        compileOnly "com.cleanroommc:lwjglx:1.0.0"
+        modLibrary "com.cleanroommc:lwjglx:1.0.0"
     }
 
     modCompileOnly ('curse.maven:opencubicchunks-292243:5135427')
@@ -60,7 +59,7 @@ dependencies {
     modImplementation ('curse.maven:nothirium-624960:7441674')
     modImplementation ('curse.maven:renderlib-624967:6461209')
 
-    modImplementation 'io.github.chaosunity.forgelin:Forgelin-Continuous:2.4.0.0'
+    modLibrary 'io.github.chaosunity.forgelin:Forgelin-Continuous:2.4.0.0:dev'
     runtimeOnly 'org.jetbrains.kotlin:kotlin-reflect:2.3.21'
 
     // ========= Integration test dependencies =========

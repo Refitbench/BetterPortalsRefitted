@@ -89,7 +89,7 @@ internal fun clientSyncIgnoringView(task: () -> Unit) {
 }
 internal fun <L : ListenableFuture<T>, T> L.logFailure(): L {
     Futures.addCallback(this, object : FutureCallback<T> {
-        override fun onSuccess(result: T?) = Unit
+        override fun onSuccess(result: T) = Unit
         override fun onFailure(t: Throwable) {
             LOGGER.error("Failed future:", t)
         }
