@@ -10,7 +10,10 @@ import org.lwjgl.opengl.GL11
  * Regular [Framebuffer] but with a depth texture.
  * May in the future be used to (at least somewhat) improve rendering of entities sticking outside of the portal frame.
  */
-internal class FramebufferD(width: Int, height: Int): Framebuffer(width, height, false) {
+internal class FramebufferD(
+    width: Int,
+    height: Int,
+) : Framebuffer(width, height, false) {
     // Workaround createFramebuffer being called during the super constructor before any initializer would run
     @Suppress("PLATFORM_CLASS_MAPPED_TO_KOTLIN")
     lateinit var depthTex: Integer
@@ -20,14 +23,33 @@ internal class FramebufferD(width: Int, height: Int): Framebuffer(width, height,
             depthTex = Integer(value)
         }
 
-    override fun createFramebuffer(width: Int, height: Int) {
+    override fun createFramebuffer(
+        width: Int,
+        height: Int,
+    ) {
         super.createFramebuffer(width, height)
 
         depthTexture = TextureUtil.glGenTextures()
         GlStateManager.bindTexture(depthTexture)
-        GlStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_DEPTH_COMPONENT, width, height, 0, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, null)
+        GlStateManager.glTexImage2D(
+            GL11.GL_TEXTURE_2D,
+            0,
+            GL11.GL_DEPTH_COMPONENT,
+            width,
+            height,
+            0,
+            GL11.GL_DEPTH_COMPONENT,
+            GL11.GL_FLOAT,
+            null,
+        )
         OpenGlHelper.glBindFramebuffer(OpenGlHelper.GL_FRAMEBUFFER, framebufferObject)
-        OpenGlHelper.glFramebufferTexture2D(OpenGlHelper.GL_FRAMEBUFFER, OpenGlHelper.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, depthTexture, 0)
+        OpenGlHelper.glFramebufferTexture2D(
+            OpenGlHelper.GL_FRAMEBUFFER,
+            OpenGlHelper.GL_DEPTH_ATTACHMENT,
+            GL11.GL_TEXTURE_2D,
+            depthTexture,
+            0,
+        )
     }
 
     override fun deleteFramebuffer() {

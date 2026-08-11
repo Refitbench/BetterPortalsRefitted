@@ -13,7 +13,8 @@ import net.minecraftforge.common.MinecraftForge
 import net.minecraftforge.event.world.WorldEvent
 import net.minecraftforge.fml.client.registry.RenderingRegistry
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent
-import net.minecraftforge.fml.common.registry.EntityRegistry
+import net.minecraftforge.fml.common.registry.EntityEntry
+import net.minecraftforge.fml.common.registry.EntityEntryBuilder
 import net.minecraftforge.registries.IForgeRegistry
 import org.apache.logging.log4j.LogManager
 
@@ -28,6 +29,7 @@ fun initTwilightForest(
         clientPreInit: (() -> Unit) -> Unit,
         init: (() -> Unit) -> Unit,
         registerBlocks: (IForgeRegistry<Block>.() -> Unit) -> Unit,
+        registerEntities: (IForgeRegistry<EntityEntry>.() -> Unit) -> Unit,
         configTwilightForestPortals: PortalConfiguration
 ) {
     TF_PORTAL_CONFIG = configTwilightForestPortals
@@ -42,17 +44,18 @@ fun initTwilightForest(
         register(BlockBetterTFPortal(mod))
     }
 
-    init {
-        EntityRegistry.registerModEntity(
-                ResourceLocation(MOD_ID, "tf_portal"),
-                TFPortalEntity::class.java,
-                "tf_portal",
-                3,
-                mod,
-                256,
-                Int.MAX_VALUE,
-                false
+    registerEntities {
+        register(
+                EntityEntryBuilder.create<TFPortalEntity>()
+                        .entity(TFPortalEntity::class.java)
+                        .id(ResourceLocation(MOD_ID, "tf_portal"), 3)
+                        .name("tf_portal")
+                        .tracker(256, Int.MAX_VALUE, false)
+                        .build()
         )
+    }
+
+    init {
         MinecraftForge.EVENT_BUS.register(object {
             @SubscribeEvent
             fun onWorld(event: WorldEvent.Load) {

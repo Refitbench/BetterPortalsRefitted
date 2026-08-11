@@ -25,14 +25,15 @@ import kotlin.concurrent.withLock
  */
 internal class ViewChunkRenderDispatcher : ChunkRenderDispatcher() {
     private val states = ConcurrentHashMap<RenderGlobal, State>()
-    private val activeState get() = Minecraft.getMinecraft().let { mc ->
-        if (!mc.isCallingFromMinecraftThread) {
-            // If we're not calling from the MC main thread, then it's probably one of the render workers
-            threadAssignment.get()
-        } else {
-            null
-        } ?: mc.renderGlobal.let { states.getOrPut(it, { State(it) }) }
-    }
+    private val activeState get() =
+        Minecraft.getMinecraft().let { mc ->
+            if (!mc.isCallingFromMinecraftThread) {
+                // If we're not calling from the MC main thread, then it's probably one of the render workers
+                threadAssignment.get()
+            } else {
+                null
+            } ?: mc.renderGlobal.let { states.getOrPut(it, { State(it) }) }
+        }
 
     /**
      * Keeps track of the last state a thread has been associated with.
@@ -51,6 +52,7 @@ internal class ViewChunkRenderDispatcher : ChunkRenderDispatcher() {
 
     private val nextChunkUpdateLock = ReentrantLock()
     private val nextChunkUpdateCondition: Condition = nextChunkUpdateLock.newCondition()
+
     override fun getNextChunkUpdate(): ChunkCompileTaskGenerator {
         // MC is leaking `this` references to other threads in the constructor of ChunkRenderDispatcher, so we need
         // to make sure that this method isn't executed before our own <init> is done.
@@ -66,9 +68,10 @@ internal class ViewChunkRenderDispatcher : ChunkRenderDispatcher() {
         nextChunkUpdateLock.withLock {
             while (true) {
                 // Try to find the next best task in any of the views
-                val allHeads = states.values.mapNotNull { state ->
-                    state.queuedUpdates.peek()?.let { state to it }
-                }
+                val allHeads =
+                    states.values.mapNotNull { state ->
+                        state.queuedUpdates.peek()?.let { state to it }
+                    }
                 val minHead = allHeads.minByOrNull { it.second }
                 if (minHead != null) {
                     val state = minHead.first
@@ -101,9 +104,10 @@ internal class ViewChunkRenderDispatcher : ChunkRenderDispatcher() {
     private fun pollNextChunkUpload(): PendingUpload? {
         while (true) {
             // Try to find the next best task in any of the views
-            val allHeads = states.values.mapNotNull { state ->
-                state.queuedUploads.peek()?.let { state to it }
-            }
+            val allHeads =
+                states.values.mapNotNull { state ->
+                    state.queuedUploads.peek()?.let { state to it }
+                }
             val minHead = allHeads.minByOrNull { it.second }
             return if (minHead != null) {
                 minHead.first.queuedUploads.poll() ?: continue
@@ -127,34 +131,41 @@ internal class ViewChunkRenderDispatcher : ChunkRenderDispatcher() {
         assignment?.claimedRenderBuilders?.decrementAndGet()
     }
 
-    override fun updateChunkLater(chunkRenderer: RenderChunk): Boolean =
-            activeState.updateChunkLater(chunkRenderer)
+    override fun updateChunkLater(chunkRenderer: RenderChunk): Boolean = activeState.updateChunkLater(chunkRenderer)
 
-    override fun updateTransparencyLater(chunkRenderer: RenderChunk): Boolean =
-            activeState.updateTransparencyLater(chunkRenderer)
+    override fun updateTransparencyLater(chunkRenderer: RenderChunk): Boolean = activeState.updateTransparencyLater(chunkRenderer)
 
-    override fun uploadChunk(layer: BlockRenderLayer, buffer: BufferBuilder, renderChunk: RenderChunk, compiledChunk: CompiledChunk, distSq: Double): ListenableFuture<Any> {
-        return if (Minecraft.getMinecraft().isCallingFromMinecraftThread) {
+    override fun uploadChunk(
+        layer: BlockRenderLayer,
+        buffer: BufferBuilder,
+        renderChunk: RenderChunk,
+        compiledChunk: CompiledChunk,
+        distSq: Double,
+    ): ListenableFuture<Any> =
+        if (Minecraft.getMinecraft().isCallingFromMinecraftThread) {
             super.uploadChunk(layer, buffer, renderChunk, compiledChunk, distSq)
         } else {
             activeState.uploadChunk(layer, buffer, renderChunk, compiledChunk, distSq)
         }
+
+    override fun runChunkUploads(finishTimeNano: Long): Boolean =
+        if (ViewRenderPlan.MAIN == ViewRenderPlan.CURRENT) {
+            runChunkUploadsForAllViews(finishTimeNano)
+        } else {
+            activeState.queuedUploads.isNotEmpty()
+        }
+
+    override fun clearChunkUpdates() {
+        activeState.clearChunkUpdates()
     }
 
-    override fun runChunkUploads(finishTimeNano: Long): Boolean = if (ViewRenderPlan.MAIN == ViewRenderPlan.CURRENT) {
-        runChunkUploadsForAllViews(finishTimeNano)
-    } else {
-        activeState.queuedUploads.isNotEmpty()
-    }
-    override fun clearChunkUpdates() { activeState.clearChunkUpdates() }
     override fun stopChunkUpdates() {
         activeState.stopChunkUpdates()
         states.remove(activeState.renderGlobal)
     }
 
     // Misnamed method, it should actually be "hasNoChunkUpdates"
-    override fun hasChunkUpdates(): Boolean =
-            states.values.all { it.queuedUpdates.isEmpty() && it.queuedUploads.isEmpty() }
+    override fun hasChunkUpdates(): Boolean = states.values.all { it.queuedUpdates.isEmpty() && it.queuedUploads.isEmpty() }
 
     override fun stopWorkerThreads() {
         val viewManager = ClientViewAPIImpl.viewManagerImpl
@@ -177,7 +188,8 @@ internal class ViewChunkRenderDispatcher : ChunkRenderDispatcher() {
                     try {
                         renderWorker.processTask(task)
                         allDone = false
-                    } catch (ignored: InterruptedException) {}
+                    } catch (_: InterruptedException) {
+                    }
                 }
             }
 
@@ -193,18 +205,18 @@ internal class ViewChunkRenderDispatcher : ChunkRenderDispatcher() {
     }
 
     override fun getDebugInfo(): String {
-        val updates = states.values.sumBy { it.queuedUpdates.size }
+        val updates = states.values.sumOf<State> { it.queuedUpdates.size }
         return if (listWorkerThreads.isEmpty()) {
             String.format("pN: %1d, pC: %03d, single-threaded", states.size, updates)
         } else {
-            val uploads = states.values.sumBy { it.queuedUploads.size }
+            val uploads = states.values.sumOf<State> { it.queuedUploads.size }
             val freeBuilders = super.getDebugInfo().splitToSequence(" ").last()
             String.format("pN: %1d, pC: %03d, pU: %1d, aB: %s", states.size, updates, uploads, freeBuilders)
         }
     }
 
     private inner class State(
-            val renderGlobal: RenderGlobal
+        val renderGlobal: RenderGlobal,
     ) {
         val claimedRenderBuilders = AtomicInteger(0)
         val queuedUpdates = PriorityBlockingQueue<ChunkCompileTaskGenerator>()
@@ -225,6 +237,7 @@ internal class ViewChunkRenderDispatcher : ChunkRenderDispatcher() {
                 }
             }
         }
+
         fun updateTransparencyLater(chunkRenderer: RenderChunk): Boolean {
             chunkRenderer.lockCompileTask.withLock {
                 val task = chunkRenderer.makeCompileTaskTransparency() ?: return true
@@ -237,10 +250,17 @@ internal class ViewChunkRenderDispatcher : ChunkRenderDispatcher() {
             }
         }
 
-        fun uploadChunk(layer: BlockRenderLayer, buffer: BufferBuilder, renderChunk: RenderChunk, compiledChunk: CompiledChunk, distSq: Double): ListenableFuture<Any> {
-            val future: ListenableFutureTask<Any> = ListenableFutureTask.create {
-                this@ViewChunkRenderDispatcher.uploadChunk(layer, buffer, renderChunk, compiledChunk, distSq)
-            }
+        fun uploadChunk(
+            layer: BlockRenderLayer,
+            buffer: BufferBuilder,
+            renderChunk: RenderChunk,
+            compiledChunk: CompiledChunk,
+            distSq: Double,
+        ): ListenableFuture<Any> {
+            val future: ListenableFutureTask<Any> =
+                ListenableFutureTask.create {
+                    this@ViewChunkRenderDispatcher.uploadChunk(layer, buffer, renderChunk, compiledChunk, distSq)
+                }
 
             queuedUploads.add(PendingUpload(future, distSq))
             return future
@@ -257,7 +277,8 @@ internal class ViewChunkRenderDispatcher : ChunkRenderDispatcher() {
                         try {
                             renderWorker.processTask(task)
                             allDone = false
-                        } catch (ignored: InterruptedException) {}
+                        } catch (_: InterruptedException) {
+                        }
                     }
                 }
 
@@ -296,10 +317,9 @@ internal class ViewChunkRenderDispatcher : ChunkRenderDispatcher() {
     }
 
     private class PendingUpload(
-            val task: ListenableFutureTask<*>,
-            val distSq: Double
+        val task: ListenableFutureTask<*>,
+        val distSq: Double,
     ) : Comparable<PendingUpload> {
         override fun compareTo(other: PendingUpload): Int = distSq.compareTo(other.distSq)
-
     }
 }

@@ -20,7 +20,8 @@ import net.minecraftforge.common.MinecraftForge
 import net.minecraftforge.event.world.WorldEvent
 import net.minecraftforge.fml.client.registry.RenderingRegistry
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent
-import net.minecraftforge.fml.common.registry.EntityRegistry
+import net.minecraftforge.fml.common.registry.EntityEntry
+import net.minecraftforge.fml.common.registry.EntityEntryBuilder
 import net.minecraftforge.registries.IForgeRegistry
 
 internal val EMPTY_AABB = AxisAlignedBB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
@@ -34,6 +35,7 @@ fun initAbyssalcraft(
         clientPreInit: (() -> Unit) -> Unit,
         init: (() -> Unit) -> Unit,
         registerBlocks: (IForgeRegistry<Block>.() -> Unit) -> Unit,
+        registerEntities: (IForgeRegistry<EntityEntry>.() -> Unit) -> Unit,
         configAbyssalcraftPortals: PortalConfiguration
 ) {
     ABYSSALCRAFT_PORTAL_CONFIG = configAbyssalcraftPortals
@@ -62,37 +64,34 @@ fun initAbyssalcraft(
         register(BlockBetterOmotholPortal(mod).also { ACBlocks.omothol_gateway = it })
     }
 
+    registerEntities {
+        register(
+                EntityEntryBuilder.create<AbyssPortalEntity>()
+                        .entity(AbyssPortalEntity::class.java)
+                        .id(ResourceLocation(MOD_ID, "${ABYSSALCRAFT_MOD_ID}_abyssal_portal"), 5)
+                        .name("${ABYSSALCRAFT_MOD_ID}_abyssal_portal")
+                        .tracker(256, Int.MAX_VALUE, false)
+                        .build()
+        )
+        register(
+                EntityEntryBuilder.create<DreadlandsPortalEntity>()
+                        .entity(DreadlandsPortalEntity::class.java)
+                        .id(ResourceLocation(MOD_ID, "${ABYSSALCRAFT_MOD_ID}_dreadlands_portal"), 6)
+                        .name("${ABYSSALCRAFT_MOD_ID}_dreadlands_portal")
+                        .tracker(256, Int.MAX_VALUE, false)
+                        .build()
+        )
+        register(
+                EntityEntryBuilder.create<OmotholPortalEntity>()
+                        .entity(OmotholPortalEntity::class.java)
+                        .id(ResourceLocation(MOD_ID, "${ABYSSALCRAFT_MOD_ID}_omothol_portal"), 7)
+                        .name("${ABYSSALCRAFT_MOD_ID}_omothol_portal")
+                        .tracker(256, Int.MAX_VALUE, false)
+                        .build()
+        )
+    }
+
     init {
-        EntityRegistry.registerModEntity(
-                ResourceLocation(MOD_ID, "${ABYSSALCRAFT_MOD_ID}_abyssal_portal"),
-                AbyssPortalEntity::class.java,
-                "${ABYSSALCRAFT_MOD_ID}_abyssal_portal",
-                5,
-                mod,
-                256,
-                Int.MAX_VALUE,
-                false
-        )
-        EntityRegistry.registerModEntity(
-                ResourceLocation(MOD_ID, "${ABYSSALCRAFT_MOD_ID}_dreadlands_portal"),
-                DreadlandsPortalEntity::class.java,
-                "${ABYSSALCRAFT_MOD_ID}_dreadlands_portal",
-                6,
-                mod,
-                256,
-                Int.MAX_VALUE,
-                false
-        )
-        EntityRegistry.registerModEntity(
-                ResourceLocation(MOD_ID, "${ABYSSALCRAFT_MOD_ID}_omothol_portal"),
-                OmotholPortalEntity::class.java,
-                "${ABYSSALCRAFT_MOD_ID}_omothol_portal",
-                7,
-                mod,
-                256,
-                Int.MAX_VALUE,
-                false
-        )
         MinecraftForge.EVENT_BUS.register(object {
             @SubscribeEvent
             fun onWorld(event: WorldEvent.Load) {

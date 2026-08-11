@@ -101,6 +101,7 @@ object BetterPortalsMod : ViewAPI by ViewAPIImpl, BetterPortalsAPI by BetterPort
                 init = { commonInitCallbacks.add(it) },
                 clientPreInit = { clientPreInitCallbacks.add(it) },
                 registerBlocks = { registerBlockCallbacks.add(it) },
+                registerEntities = { registerEntityCallbacks.add(it) },
                 configTwilightForestPortals = BPConfig.twilightForestPortals.toConfiguration(),
             )
         }
@@ -120,6 +121,7 @@ object BetterPortalsMod : ViewAPI by ViewAPIImpl, BetterPortalsAPI by BetterPort
                 init = { commonInitCallbacks.add(it) },
                 clientPreInit = { clientPreInitCallbacks.add(it) },
                 registerBlocks = { registerBlockCallbacks.add(it) },
+                registerEntities = { registerEntityCallbacks.add(it) },
                 configAetherPortals = BPConfig.aetherPortals.toConfiguration(),
             )
         }
@@ -130,6 +132,7 @@ object BetterPortalsMod : ViewAPI by ViewAPIImpl, BetterPortalsAPI by BetterPort
                 init = { commonInitCallbacks.add(it) },
                 clientPreInit = { clientPreInitCallbacks.add(it) },
                 registerBlocks = { registerBlockCallbacks.add(it) },
+                registerEntities = { registerEntityCallbacks.add(it) },
                 configAbyssalcraftPortals = BPConfig.abyssalcraftPortals.toConfiguration(),
             )
         }
@@ -140,6 +143,7 @@ object BetterPortalsMod : ViewAPI by ViewAPIImpl, BetterPortalsAPI by BetterPort
                 init = { commonInitCallbacks.add(it) },
                 clientPreInit = { clientPreInitCallbacks.add(it) },
                 registerBlocks = { registerBlockCallbacks.add(it) },
+                registerEntities = { registerEntityCallbacks.add(it) },
                 configTravelHutsPortals = BPConfig.travelHutsPortals.toConfiguration(),
             )
         }

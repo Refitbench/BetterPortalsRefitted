@@ -82,6 +82,7 @@ fun initVanilla(
             register(
                 EntityEntryBuilder
                     .create<NetherPortalEntity>()
+                    .entity(NetherPortalEntity::class.java)
                     .id(ResourceLocation(MOD_ID, "nether_portal"), 0)
                     .name("nether_portal")
                     .tracker(256, Int.MAX_VALUE, false)
@@ -92,6 +93,7 @@ fun initVanilla(
             register(
                 EntityEntryBuilder
                     .create<EndEntryPortalEntity>()
+                    .entity(EndEntryPortalEntity::class.java)
                     .id(ResourceLocation(MOD_ID, "end_entry_portal"), 1)
                     .name("end_entry_portal")
                     .tracker(256, Int.MAX_VALUE, false)
@@ -100,6 +102,7 @@ fun initVanilla(
             register(
                 EntityEntryBuilder
                     .create<EndExitPortalEntity>()
+                    .entity(EndExitPortalEntity::class.java)
                     .id(ResourceLocation(MOD_ID, "end_exit_portal"), 2)
                     .name("end_exit_portal")
                     .tracker(256, Int.MAX_VALUE, false)

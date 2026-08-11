@@ -16,7 +16,8 @@ import net.minecraftforge.common.MinecraftForge
 import net.minecraftforge.event.world.WorldEvent
 import net.minecraftforge.fml.client.registry.RenderingRegistry
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent
-import net.minecraftforge.fml.common.registry.EntityRegistry
+import net.minecraftforge.fml.common.registry.EntityEntry
+import net.minecraftforge.fml.common.registry.EntityEntryBuilder
 import net.minecraftforge.registries.IForgeRegistry
 
 internal val EMPTY_AABB = AxisAlignedBB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0)
@@ -30,6 +31,7 @@ fun initAether(
         clientPreInit: (() -> Unit) -> Unit,
         init: (() -> Unit) -> Unit,
         registerBlocks: (IForgeRegistry<Block>.() -> Unit) -> Unit,
+        registerEntities: (IForgeRegistry<EntityEntry>.() -> Unit) -> Unit,
         configAetherPortals: PortalConfiguration
 ) {
     AETHER_PORTAL_CONFIG = configAetherPortals
@@ -46,17 +48,18 @@ fun initAether(
         register(BlockBetterAetherPortal(mod).also { BlocksAether.aether_portal = it })
     }
 
-    init {
-        EntityRegistry.registerModEntity(
-                ResourceLocation(MOD_ID, "aether_portal"),
-                AetherPortalEntity::class.java,
-                "aether_portal",
-                4,
-                mod,
-                256,
-                Int.MAX_VALUE,
-                false
+    registerEntities {
+        register(
+                EntityEntryBuilder.create<AetherPortalEntity>()
+                        .entity(AetherPortalEntity::class.java)
+                        .id(ResourceLocation(MOD_ID, "aether_portal"), 4)
+                        .name("aether_portal")
+                        .tracker(256, Int.MAX_VALUE, false)
+                        .build()
         )
+    }
+
+    init {
         MinecraftForge.EVENT_BUS.register(object {
             @SubscribeEvent
             fun onWorld(event: WorldEvent.Load) {
