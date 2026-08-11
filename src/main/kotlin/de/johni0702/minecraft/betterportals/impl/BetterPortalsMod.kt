@@ -24,6 +24,7 @@ import net.minecraftforge.fml.common.event.FMLPostInitializationEvent
 import net.minecraftforge.fml.common.event.FMLPreInitializationEvent
 import net.minecraftforge.fml.common.eventhandler.EventPriority
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent
+import net.minecraftforge.fml.common.registry.EntityEntry
 import net.minecraftforge.registries.IForgeRegistry
 import org.apache.logging.log4j.Logger
 import java.io.File
@@ -47,6 +48,7 @@ object BetterPortalsMod : ViewAPI by ViewAPIImpl, BetterPortalsAPI by BetterPort
     internal val commonPostInitCallbacks = mutableListOf<() -> Unit>()
     internal val clientPostInitCallbacks = mutableListOf<() -> Unit>()
     private val registerBlockCallbacks = mutableListOf<IForgeRegistry<Block>.() -> Unit>()
+    private val registerEntityCallbacks = mutableListOf<IForgeRegistry<EntityEntry>.() -> Unit>()
 
     init {
         ConfigManager.sync(MOD_ID, Config.Type.INSTANCE)
@@ -86,6 +88,7 @@ object BetterPortalsMod : ViewAPI by ViewAPIImpl, BetterPortalsAPI by BetterPort
             init = { commonInitCallbacks.add(it) },
             clientPreInit = { clientPreInitCallbacks.add(it) },
             registerBlocks = { registerBlockCallbacks.add(it) },
+            registerEntities = { registerEntityCallbacks.add(it) },
             enableNetherPortals = BPConfig.netherPortals.enabled,
             enableEndPortals = BPConfig.endPortals.enabled,
             configNetherPortals = BPConfig.netherPortals.toConfiguration(),
@@ -157,12 +160,21 @@ object BetterPortalsMod : ViewAPI by ViewAPIImpl, BetterPortalsAPI by BetterPort
         }
     }
 
+    @SubscribeEvent(priority = EventPriority.LOW)
+    fun registerEntities(event: RegistryEvent.Register<EntityEntry>) {
+        with(event.registry) {
+            registerEntityCallbacks.forEach { it() }
+        }
+    }
+
     @Mod.EventHandler
+    @Suppress("unused")
     fun init(event: FMLInitializationEvent) {
         proxy.init(this)
     }
 
     @Mod.EventHandler
+    @Suppress("unused")
     fun preInit(event: FMLPostInitializationEvent) {
         proxy.postInit(this)
     }

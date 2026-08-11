@@ -24,7 +24,8 @@ import net.minecraftforge.event.world.WorldEvent
 import net.minecraftforge.fml.client.registry.ClientRegistry
 import net.minecraftforge.fml.client.registry.RenderingRegistry
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent
-import net.minecraftforge.fml.common.registry.EntityRegistry
+import net.minecraftforge.fml.common.registry.EntityEntry
+import net.minecraftforge.fml.common.registry.EntityEntryBuilder
 import net.minecraftforge.registries.IForgeRegistry
 
 const val MOD_ID = "betterportals"
@@ -37,6 +38,7 @@ fun initVanilla(
     clientPreInit: (() -> Unit) -> Unit,
     init: (() -> Unit) -> Unit,
     registerBlocks: (IForgeRegistry<Block>.() -> Unit) -> Unit,
+    registerEntities: (IForgeRegistry<EntityEntry>.() -> Unit) -> Unit,
     enableNetherPortals: Boolean,
     enableEndPortals: Boolean,
     configNetherPortals: PortalConfiguration,
@@ -75,18 +77,39 @@ fun initVanilla(
         }
     }
 
+    registerEntities {
+        if (enableNetherPortals) {
+            register(
+                EntityEntryBuilder
+                    .create<NetherPortalEntity>()
+                    .id(ResourceLocation(MOD_ID, "nether_portal"), 0)
+                    .name("nether_portal")
+                    .tracker(256, Int.MAX_VALUE, false)
+                    .build(),
+            )
+        }
+        if (enableEndPortals) {
+            register(
+                EntityEntryBuilder
+                    .create<EndEntryPortalEntity>()
+                    .id(ResourceLocation(MOD_ID, "end_entry_portal"), 1)
+                    .name("end_entry_portal")
+                    .tracker(256, Int.MAX_VALUE, false)
+                    .build(),
+            )
+            register(
+                EntityEntryBuilder
+                    .create<EndExitPortalEntity>()
+                    .id(ResourceLocation(MOD_ID, "end_exit_portal"), 2)
+                    .name("end_exit_portal")
+                    .tracker(256, Int.MAX_VALUE, false)
+                    .build(),
+            )
+        }
+    }
+
     init {
         if (enableNetherPortals) {
-            EntityRegistry.registerModEntity(
-                ResourceLocation(MOD_ID, "nether_portal"),
-                NetherPortalEntity::class.java,
-                "nether_portal",
-                0,
-                mod,
-                256,
-                Int.MAX_VALUE,
-                false,
-            )
             MinecraftForge.EVENT_BUS.register(
                 object {
                     @SubscribeEvent
@@ -98,26 +121,6 @@ fun initVanilla(
             )
         }
         if (enableEndPortals) {
-            EntityRegistry.registerModEntity(
-                ResourceLocation(MOD_ID, "end_entry_portal"),
-                EndEntryPortalEntity::class.java,
-                "end_entry_portal",
-                1,
-                mod,
-                256,
-                Int.MAX_VALUE,
-                false,
-            )
-            EntityRegistry.registerModEntity(
-                ResourceLocation(MOD_ID, "end_exit_portal"),
-                EndExitPortalEntity::class.java,
-                "end_exit_portal",
-                2,
-                mod,
-                256,
-                Int.MAX_VALUE,
-                false,
-            )
             MinecraftForge.EVENT_BUS.register(
                 object {
                     @SubscribeEvent
