@@ -10,6 +10,7 @@ import net.minecraft.entity.Entity
 import net.minecraft.util.ResourceLocation
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
+import net.minecraft.util.math.Vec3d
 import net.minecraft.world.World
 import net.minecraft.world.WorldServer
 import net.minecraftforge.common.MinecraftForge
@@ -109,6 +110,34 @@ internal class PortalManagerImpl(override val world: World) : PortalManager {
 
         private fun tickWorld(world: World) {
             world.portalManager.loadedPortals.toList().forEach { it.checkTeleportees() }
+            correctPortalPenetration(world)
+        }
+        
+        private fun correctPortalPenetration(world: World) {
+            if (!world.isRemote) return
+            val mc = Minecraft.getMinecraft()
+            val player = mc.player ?: return
+            if (player.noClip || player.isRiding) return
+            if (player.world !== world) return
+            val bb = player.entityBoundingBox
+            if (world.portalManager.loadedPortals.none { it.portal.localBoundingBox.grow(1.0).intersects(bb) }) return
+            if (world.getCollisionBoxes(null, bb).isEmpty()) return
+            val dirs = listOf(
+                Vec3d(0.1, 0.0, 0.0), Vec3d(-0.1, 0.0, 0.0),
+                Vec3d(0.0, 0.0, 0.1), Vec3d(0.0, 0.0, -0.1),
+                Vec3d(0.0, 0.1, 0.0), Vec3d(0.0, -0.1, 0.0)
+            )
+            for (dir in dirs) {
+                var dist = 1.0
+                while (dist <= 3.0) {
+                    val delta = dir * dist
+                    if (world.getCollisionBoxes(null, bb.offset(delta.x, delta.y, delta.z)).isEmpty()) {
+                        player.setPosition(player.posX + delta.x, player.posY + delta.y, player.posZ + delta.z)
+                        return
+                    }
+                    dist += 1.0
+                }
+            }
         }
 
         @SubscribeEvent(priority = EventPriority.LOW)
