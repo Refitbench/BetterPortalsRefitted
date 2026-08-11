@@ -12,28 +12,28 @@ import java.util.List;
 import java.util.Set;
 
 public class BetterPortalsMixinConfigPlugin implements IMixinConfigPlugin {
-    private Logger logger = LogManager.getLogger("mixin/betterportals");
-    private boolean hasKotlin = Launch.classLoader.getClassBytes("kotlin.Pair") != null;
-    private boolean hasOF = Launch.classLoader.getClassBytes("optifine.OptiFineForgeTweaker") != null;
-    private boolean hasCC = Launch.classLoader.getClassBytes("io.github.opencubicchunks.cubicchunks.core.asm.coremod.CubicChunksCoreMod") != null;
-    private boolean hasSponge = Launch.classLoader.getClassBytes("org.spongepowered.common.SpongePlatform") != null;
-    private boolean hasVC = Launch.classLoader.getClassBytes("org.vivecraft.asm.VivecraftASMTransformer") != null;
-    private boolean hasCeleritas = Launch.classLoader.getClassBytes("org.taumc.celeritas.CeleritasVintage") != null;
-    private boolean hasNothirium = Launch.classLoader.getClassBytes("meldexun.nothirium.mc.renderer.ChunkRenderManager") != null;
-    private boolean vcVR = hasVC && Launch.classLoader.getClassBytes("org.vivecraft.provider.MCOpenVR") != null;
-    private boolean vcNonVR = hasVC && !vcVR;
+    private final Logger logger = LogManager.getLogger("mixin/betterportals");
+    private final boolean hasKotlin = Launch.classLoader.isClassExist("kotlin.Pair");
+    private final boolean hasOF = Launch.classLoader.isClassExist("optifine.OptiFineForgeTweaker");
+    private final boolean hasCC = Launch.classLoader.isClassExist("io.github.opencubicchunks.cubicchunks.core.asm.coremod.CubicChunksCoreMod");
+    private final boolean hasSponge = Launch.classLoader.isClassExist("org.spongepowered.common.SpongePlatform");
+    private final boolean hasVC = Launch.classLoader.isClassExist("org.vivecraft.asm.VivecraftASMTransformer");
+    private final boolean hasCeleritas = Launch.classLoader.isClassExist("org.taumc.celeritas.CeleritasVintage");
+    private final boolean hasNothirium = Launch.classLoader.isClassExist("meldexun.nothirium.mc.renderer.ChunkRenderManager");
+    private final boolean vcVR = hasVC && Launch.classLoader.isClassExist("org.vivecraft.provider.MCOpenVR");
+    private final boolean vcNonVR = hasVC && !vcVR;
 
     {
         if (!hasKotlin) {
             logger.error("Couldn't find kotlin.Pair class, Forgelin is probably missing, skipping all mixins!");
         }
-        logger.debug("hasKotlin: " + hasKotlin);
-        logger.debug("hasOF: " + hasOF);
-        logger.debug("hasCC: " + hasCC);
-        logger.debug("hasSponge: " + hasSponge);
-        logger.debug("hasVC: " + hasVC + " (VR: " + vcVR + ")");
-        logger.debug("hasCeleritas: " + hasCeleritas);
-        logger.debug("hasNothirium: " + hasNothirium);
+        logger.debug("hasKotlin: {}", hasKotlin);
+        logger.debug("hasOF: {}", hasOF);
+        logger.debug("hasCC: {}", hasCC);
+        logger.debug("hasSponge: {}", hasSponge);
+        logger.debug("hasVC: {} (VR: {})", hasVC, vcVR);
+        logger.debug("hasCeleritas: {}", hasCeleritas);
+        logger.debug("hasNothirium: {}", hasNothirium);
         if (hasCeleritas && hasNothirium) {
             logger.warn("Both Celeritas and Nothirium are installed; BetterPortals will use Celeritas terrain compatibility");
         }
