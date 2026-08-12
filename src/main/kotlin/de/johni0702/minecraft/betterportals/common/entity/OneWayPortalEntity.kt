@@ -4,6 +4,7 @@ import de.johni0702.minecraft.betterportals.common.*
 import de.johni0702.minecraft.betterportals.common.util.TickTimer
 import net.minecraft.block.Block
 import net.minecraft.block.material.Material
+import net.minecraft.block.state.IBlockState
 import net.minecraft.client.renderer.culling.ICamera
 import net.minecraft.entity.Entity
 import net.minecraft.entity.player.EntityPlayer
@@ -180,8 +181,8 @@ abstract class OneWayPortalEntity(
     override fun notifyDataManagerChange(key: DataParameter<*>) {
         super.notifyDataManagerChange(key)
         if (world.isRemote && key == IS_TAIL_VISIBLE && isTailEnd) {
-            val newState = (if (isTailVisible) portalFrameBlock else Blocks.AIR).defaultState
-            val oldState = (if (isTailVisible) Blocks.AIR else portalFrameBlock).defaultState
+            val newState = if (isTailVisible) portalFrameState else Blocks.AIR.defaultState
+            val oldState = if (isTailVisible) Blocks.AIR.defaultState else portalFrameState
             val portalBlocks = portal.localBlocks
             portalBlocks.forEach { pos ->
                 EnumFacing.HORIZONTALS.forEach { facing ->
@@ -204,6 +205,14 @@ abstract class OneWayPortalEntity(
      * The type of blocks which form the fake, client-side frame at the tail end of the portal.
      */
     abstract val portalFrameBlock: Block
+
+    /**
+     * The state used for the fake, client-side frame blocks at the tail end of the portal. Defaults to the frame
+     * block's default state; portals whose frame has additional visual state (e.g. the end portal frame's eye) can
+     * override this.
+     */
+    open val portalFrameState: IBlockState
+        get() = portalFrameBlock.defaultState
 
     /**
      * Check whether the tail end is obstructed by blocks when this timer reaches 0.

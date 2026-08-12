@@ -61,7 +61,10 @@ fun initVanilla(
         if (enableEndPortals) {
             ClientRegistry.bindTileEntitySpecialRenderer(TileEntityBetterEndPortal::class.java, BetterEndPortalTileRenderer())
             RenderingRegistry.registerEntityRenderingHandler(EndEntryPortalEntity::class.java) {
-                RenderOneWayPortalEntity(it, EndPortalRenderer(configEndPortals.opacity))
+                RenderOneWayPortalEntity(
+                    it,
+                    EndPortalRenderer(configEndPortals.opacity, EndPortalRenderer.END_FRAME_FAR_FACE_INSET),
+                )
             }
             RenderingRegistry.registerEntityRenderingHandler(EndExitPortalEntity::class.java) {
                 RenderOneWayPortalEntity(it, EndPortalRenderer(configEndPortals.opacity))

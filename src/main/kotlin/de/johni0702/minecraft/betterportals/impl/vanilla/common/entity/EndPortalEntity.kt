@@ -6,6 +6,8 @@ import de.johni0702.minecraft.betterportals.common.util.TickTimer
 import de.johni0702.minecraft.betterportals.impl.vanilla.common.END_PORTAL_CONFIG
 import net.minecraft.block.Block
 import net.minecraft.block.BlockEndPortal
+import net.minecraft.block.BlockEndPortalFrame
+import net.minecraft.block.state.IBlockState
 import net.minecraft.init.Blocks
 import net.minecraft.util.EnumFacing
 import net.minecraft.util.Rotation
@@ -35,6 +37,9 @@ class EndEntryPortalEntity(
 
     override val portalFrameBlock: Block
         get() = Blocks.END_PORTAL_FRAME
+
+    override val portalFrameState: IBlockState
+        get() = Blocks.END_PORTAL_FRAME.defaultState.withProperty(BlockEndPortalFrame.EYE, true)
 }
 
 class EndExitPortalEntity(

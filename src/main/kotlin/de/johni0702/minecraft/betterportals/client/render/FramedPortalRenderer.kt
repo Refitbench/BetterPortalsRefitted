@@ -28,12 +28,12 @@ open class FramedPortalRenderer(
 ) : PortalRenderer<FinitePortal>() {
     override fun renderPortalSurface(portal: FinitePortal, pos: Vec3d, renderPass: RenderPass, haveContent: Boolean) {
         val offset = pos - Vec3d(0.5, 0.5, 0.5)
+        val blocks = portal.blocks.mapTo(mutableSetOf()) { it.rotate(portal.localRotation) }
 
         val tessellator = Tessellator.getInstance()
         with(tessellator.buffer) {
             begin(GL11.GL_QUADS, DefaultVertexFormats.POSITION)
 
-            val blocks = portal.blocks.mapTo(mutableSetOf()) { it.rotate(portal.localRotation) }
             blocks.forEach { pos ->
                 setTranslation(offset.x + pos.x, offset.y + pos.y, offset.z + pos.z)
                 if (haveContent) {
@@ -65,9 +65,11 @@ open class FramedPortalRenderer(
 
     protected open fun renderPartialPortalFace(bufferBuilder: BufferBuilder, facing: EnumFacing) {
         // Drawing a cube has never been easier
-        val xF = facing.frontOffsetX * 0.5
-        val yF = facing.frontOffsetY * 0.5
-        val zF = facing.frontOffsetZ * 0.5
+        val inset = portalFaceInset(facing)
+        val height = portalFaceHeight(facing)
+        val xF = facing.frontOffsetX * (0.5 - inset)
+        val yF = facing.frontOffsetY * (0.5 - inset)
+        val zF = facing.frontOffsetZ * (0.5 - inset)
         var rotFacing = if (facing.axis == EnumFacing.Axis.Y) EnumFacing.NORTH else EnumFacing.UP
         (0..3).map { _ ->
             val nextRotFacing = rotFacing.rotateAround(facing.axis).let {
@@ -75,12 +77,27 @@ open class FramedPortalRenderer(
             }
             bufferBuilder.pos(
                 xF + rotFacing.frontOffsetX * 0.5 + nextRotFacing.frontOffsetX * 0.5 + 0.5,
-                (yF + rotFacing.frontOffsetY * 0.5 + nextRotFacing.frontOffsetY * 0.5 + 0.5),
+                yF + (rotFacing.frontOffsetY * 0.5 + nextRotFacing.frontOffsetY * 0.5 + 0.5) * height,
                 zF + rotFacing.frontOffsetZ * 0.5 + nextRotFacing.frontOffsetZ * 0.5 + 0.5
             ).endVertex()
             rotFacing = nextRotFacing
         }
     }
+
+    /**
+     * Vertical extent of a side face, as a fraction of the full block cell height. Horizontal (UP/DOWN) faces are
+     * unaffected by this value (their plane is determined by [portalFaceInset]); side faces are drawn from y=0 up
+     * to this height. Used by portals whose frame is shorter than a full block so that the rendered surface does
+     * not extend above the frame.
+     */
+    protected open fun portalFaceHeight(facing: EnumFacing): Double = 1.0
+
+    /**
+     * How far the face with the given normal is pulled inward from the block cell boundary (i.e. how much shorter
+     * the portal surface is along this direction). Used e.g. for portals whose frame is not a full block tall, so
+     * that the portal surface meets the frame instead of leaving a gap through which the local world is visible.
+     */
+    protected open fun portalFaceInset(facing: EnumFacing): Double = 0.0
 
     override fun doRenderTransparent(portal: FinitePortal, pos: Vec3d, partialTicks: Float) {
         super.doRenderTransparent(portal, pos, partialTicks)
