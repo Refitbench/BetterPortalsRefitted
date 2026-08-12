@@ -450,6 +450,11 @@ open class PortalAgent<P: Portal>(
                 entity.isDead = true
 
                 newEntity.derivePosRotFrom(entity, portal)
+                // Make sure the client immediately learns about the (transformed) velocity: without this, projectiles
+                // (whose spawn packet only carries velocity when they have a shooter, data == 0 otherwise) would keep
+                // their zero motion on the client until the next tracker tick, and EntityArrow would keep re-deriving
+                // its (wrong) body direction from that zero motion.
+                newEntity.velocityChanged = true
 
                 remoteWorld.forceSpawnEntity(newEntity)
 

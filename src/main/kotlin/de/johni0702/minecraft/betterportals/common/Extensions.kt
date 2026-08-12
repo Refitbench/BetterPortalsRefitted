@@ -13,6 +13,7 @@ import net.minecraft.entity.EntityTracker
 import net.minecraft.entity.item.EntityMinecart
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.entity.player.EntityPlayerMP
+import net.minecraft.entity.projectile.EntityArrow
 import net.minecraft.init.Blocks
 import net.minecraft.launchwrapper.Launch
 import net.minecraft.nbt.NBTTagCompound
@@ -473,6 +474,19 @@ fun Entity.derivePosRotFrom(from: Entity, matrix: Matrix4d, yawOffset: Float) {
     to.prevRotationYaw = from.prevRotationYaw + yawOffset
     to.rotationPitch = from.rotationPitch
     to.prevRotationPitch = from.prevRotationPitch
+
+    if (to is EntityArrow) {
+        // 1.12.2 arrows derive their body direction from their motion at launch and then keep it frozen.
+        // After a portal transform the trajectory (motion) is rotated correctly, so re-derive the body from the
+        // transformed motion to keep body and trajectory aligned. Doing this here (rather than relying on the
+        // yaw-offset chain) makes it independent of runtime state like the client's afterUsePortal sync or the
+        // vanilla spawn packet not carrying velocity for arrows without a shooter (data == 0).
+        val f = MathHelper.sqrt(to.motionX * to.motionX + to.motionZ * to.motionZ)
+        to.rotationYaw = (MathHelper.atan2(to.motionX, to.motionZ) * 180.0 / Math.PI).toFloat()
+        to.rotationPitch = (MathHelper.atan2(to.motionY, f.toDouble()) * 180.0 / Math.PI).toFloat()
+        to.prevRotationYaw = to.rotationYaw
+        to.prevRotationPitch = to.rotationPitch
+    }
 
     if (to is EntityPlayer && from is EntityPlayer) {
         to.cameraYaw = from.cameraYaw
