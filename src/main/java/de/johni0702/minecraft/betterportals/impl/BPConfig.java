@@ -58,6 +58,14 @@ public class BPConfig {
     )
     public static boolean preventFallDamage = true;
 
+    @Config.Name("Bounce ender pearls off portals")
+    @Config.Comment("Whether ender pearls thrown at a portal bounce back off it instead of passing through to the\n" +
+            "other side.\n" +
+            "\n" +
+            "Server-side setting; the client mirrors the behavior so that pearls do not visually pass through\n" +
+            "the portal before the server catches up. Keep it consistent on both sides for the best experience.")
+    public static boolean bounceEnderPearls = true;
+
     @Config.Name("Sound through portals")
     @Config.Comment("Whether to redirect sounds in the remote world of a portal to originate from the direction of the portal." +
             "Disabling will drop all sounds not originating in the primary world.\n" +

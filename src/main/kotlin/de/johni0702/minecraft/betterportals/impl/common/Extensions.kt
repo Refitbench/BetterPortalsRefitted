@@ -17,6 +17,7 @@ internal const val MOD_ID = "bp-portal"
 internal val LOGGER = LogManager.getLogger("betterportals/portal")
 
 internal lateinit var preventFallDamageGetter: () -> Boolean
+internal lateinit var bounceEnderPearlsGetter: () -> Boolean
 internal lateinit var maxRenderRecursionGetter: () -> Int
 
 fun initPortal(
@@ -24,10 +25,12 @@ fun initPortal(
     init: (() -> Unit) -> Unit,
     clientInit: (() -> Unit) -> Unit,
     preventFallDamage: () -> Boolean,
+    bounceEnderPearls: () -> Boolean,
     dropRemoteSound: () -> Boolean,
     maxRenderRecursion: () -> Int,
 ) {
     preventFallDamageGetter = preventFallDamage
+    bounceEnderPearlsGetter = bounceEnderPearls
     maxRenderRecursionGetter = maxRenderRecursion
 
     init {

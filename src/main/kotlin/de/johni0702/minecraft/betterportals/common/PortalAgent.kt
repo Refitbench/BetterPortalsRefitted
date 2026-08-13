@@ -12,6 +12,7 @@ import net.minecraft.client.multiplayer.WorldClient
 import net.minecraft.client.renderer.culling.ICamera
 import net.minecraft.entity.Entity
 import net.minecraft.entity.EntityList
+import net.minecraft.entity.item.EntityEnderPearl
 import net.minecraft.entity.item.EntityMinecart
 import net.minecraft.entity.player.EntityPlayer
 import net.minecraft.entity.player.EntityPlayerMP
@@ -107,6 +108,12 @@ interface PortalManager {
      * Whether to (by default) prevent the next fall damage after passing through a vertical portal.
      */
     val preventFallAfterVerticalPortal: Boolean
+
+    /**
+     * Whether ender pearls thrown at a portal bounce back off it instead of passing through to the other side.
+     */
+    val bounceEnderPearls: Boolean
+        get() = true
 }
 
 val World.portalManager get() = BetterPortalsAPI.instance.getPortalManager(this)
@@ -389,12 +396,66 @@ open class PortalAgent<P: Portal>(
         val prevFrom = portal.localAxis.toFacing(prevRelPos)
 
         if (from != prevFrom) {
+            if (manager.bounceEnderPearls && entity is EntityEnderPearl) {
+                // Ender pearls do not pass through the portal: reflect them back off the portal surface instead of
+                // teleporting them to the remote side. This runs on both the server (authoritative) and the client
+                // (cosmetic, to keep the pearl from visibly passing through the portal before the next tracker update).
+                manager.logger.info("[tpdbg] ender pearl {} bouncing off portal: portal={} from={} prevFrom={} pos={}",
+                        entity.entityId, portal.localPosition, from, prevFrom, entityPos)
+                bounceBack(entity)
+                return
+            }
             if (entity is EntityPlayer) {
                 manager.logger.info("[tpdbg] player {} crossing portal: portal={} from={} prevFrom={} pos={} prevPos={}",
                         entity.name, portal.localPosition, from, prevFrom, entityPos, entityPrevPos)
             }
             teleport(entity, prevFrom)
         }
+    }
+
+    /**
+     * Reflects the given entity (which has just entered the portal from the given side) back off the portal surface,
+     * as if it had hit a wall, instead of teleporting it through the portal.
+     *
+     * Both the position (including the ones used for client-side interpolation) and the motion are mirrored across the
+     * portal plane, so the entity ends up back on the side it entered from and continues flying away from the portal.
+     *
+     * May be called on both the client and the server. The server's reflection is authoritative; the client's is
+     * purely cosmetic to keep the entity from visually passing through the portal.
+     */
+    protected open fun bounceBack(entity: Entity) {
+        val normal = portal.localFacing.directionVec.to3d()
+        val planePos = portal.localPosition.to3dMid()
+
+        // Mirror a point across the portal plane (through planePos).
+        fun Vec3d.mirrorPosition() = subtract(normal.scale(2 * subtract(planePos).dotProduct(normal)))
+        // Reflect a direction/velocity across the portal plane. Unlike [mirrorPosition], this must not involve
+        // planePos: adding it would amplify the motion by ~2x the plane's distance from the origin (e.g. hundreds of
+        // blocks per tick for a portal at (0, 0, 270)), flinging the entity out of the loaded area in a single tick.
+        fun Vec3d.mirrorMotion() = subtract(normal.scale(2 * dotProduct(normal)))
+
+        val pos = Vec3d(entity.posX, entity.posY, entity.posZ).mirrorPosition()
+        val prevPos = Vec3d(entity.prevPosX, entity.prevPosY, entity.prevPosZ).mirrorPosition()
+        val interpPos = Vec3d(entity.lastTickPosX, entity.lastTickPosY, entity.lastTickPosZ).mirrorPosition()
+        val motion = Vec3d(entity.motionX, entity.motionY, entity.motionZ).mirrorMotion()
+
+        entity.setPosition(pos.x, pos.y, pos.z)
+        entity.prevPosX = prevPos.x
+        entity.prevPosY = prevPos.y
+        entity.prevPosZ = prevPos.z
+        entity.lastTickPosX = interpPos.x
+        entity.lastTickPosY = interpPos.y
+        entity.lastTickPosZ = interpPos.z
+        entity.motionX = motion.x
+        entity.motionY = motion.y
+        entity.motionZ = motion.z
+        // Make sure the clients immediately learn about the reflected motion: the tracker only sends the velocity
+        // when this flag is set and, without it, the pearl would keep flying with its pre-bounce motion.
+        entity.velocityChanged = true
+
+        // Overwrite the position recorded at the beginning of [checkTeleportee] (which is still on the far side of
+        // the portal) so that the next call does not detect another crossing.
+        lastTickPos[entity] = pos.add(entity.eyeOffset)
     }
 
     /**

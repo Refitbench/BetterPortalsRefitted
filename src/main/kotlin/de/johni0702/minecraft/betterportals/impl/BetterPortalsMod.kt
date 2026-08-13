@@ -79,6 +79,7 @@ object BetterPortalsMod : ViewAPI by ViewAPIImpl, BetterPortalsAPI by BetterPort
             init = { commonInitCallbacks.add(it) },
             clientInit = { clientInitCallbacks.add(it) },
             preventFallDamage = { BPConfig.preventFallDamage },
+            bounceEnderPearls = { BPConfig.bounceEnderPearls },
             dropRemoteSound = { !BPConfig.soundThroughPortals },
             maxRenderRecursion = { if (BPConfig.seeThroughPortals) BPConfig.recursionLimit else 0 },
         )

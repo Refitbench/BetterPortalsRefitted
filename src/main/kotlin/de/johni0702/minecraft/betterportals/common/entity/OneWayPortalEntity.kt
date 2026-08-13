@@ -60,11 +60,13 @@ open class OneWayPortalEntityPortalAgent(
         // local one is invisible).
         if (entity is EntityPlayer && !oneWayEntity.isTailEnd) {
             val remotePortal = this.entity.getRemotePortal()
-            (remotePortal as OneWayPortalEntity).isTailVisible = true
-            if (world.isRemote) {
-                // Re-start the client-side fade locally: the server-side flag may already be true, so the dataManager
-                // won't notify and the fade would otherwise remain 0 (invisible tail end).
-                (remotePortal as OneWayPortalEntity).restartFade()
+            if (remotePortal is OneWayPortalEntity) {
+                remotePortal.isTailVisible = true
+                if (world.isRemote) {
+                    // Re-start the client-side fade locally: the server-side flag may already be true, so the dataManager
+                    // won't notify and the fade would otherwise remain 0 (invisible tail end).
+                    remotePortal.restartFade()
+                }
             }
         }
         super.checkTeleportee(entity)
@@ -73,10 +75,10 @@ open class OneWayPortalEntityPortalAgent(
     override fun teleportPlayer(player: EntityPlayer, from: EnumFacing): Boolean {
         val remotePortal = entity.getRemotePortal() // FIXME for some reason this call fails after the teleport; might be fixed by now
         val success = super.teleportPlayer(player, from)
-        if (success) {
-            (remotePortal as OneWayPortalEntity).isTailVisible = true
+        if (success && remotePortal is OneWayPortalEntity) {
+            remotePortal.isTailVisible = true
             if (world.isRemote) {
-                (remotePortal as OneWayPortalEntity).restartFade()
+                remotePortal.restartFade()
             }
         }
         return success
@@ -85,14 +87,17 @@ open class OneWayPortalEntityPortalAgent(
     override fun serverPortalUsed(player: EntityPlayerMP): Boolean {
         val remotePortal = entity.getRemotePortal()
         val success = super.serverPortalUsed(player)
-        if (success) {
-            (remotePortal as OneWayPortalEntity).isTailVisible = true
+        if (success && remotePortal is OneWayPortalEntity) {
+            remotePortal.isTailVisible = true
         }
         return success
     }
     override fun teleportNonPlayerEntity(entity: Entity, from: EnumFacing) {
         super.teleportNonPlayerEntity(entity, from)
-        (this.entity.getRemotePortal() as OneWayPortalEntity).isTailVisible = true
+        val remotePortal = this.entity.getRemotePortal()
+        if (remotePortal is OneWayPortalEntity) {
+            remotePortal.isTailVisible = true
+        }
     }
 
     override fun canBeSeen(camera: ICamera): Boolean = (!oneWayEntity.isTailEnd || oneWayEntity.isTailVisible) && super.canBeSeen(camera)

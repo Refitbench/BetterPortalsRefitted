@@ -14,6 +14,7 @@ import net.minecraft.util.ResourceLocation
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.world.World
 import net.minecraft.world.WorldServer
+import net.minecraftforge.common.DimensionManager
 import net.minecraftforge.fml.relauncher.Side
 import net.minecraftforge.fml.relauncher.SideOnly
 import kotlin.text.set
@@ -117,12 +118,20 @@ abstract class AbstractPortalEntity(
         compound.setTag("BetterPortal", portal.writePortalToNBT())
     }
 
+    /**
+     * Returns the portal entity at the other end of this portal or `null` if it is not currently loaded.
+     *
+     * Must not load any worlds or chunks: loading them from here can lead to re-entrant calls (e.g. while an entity
+     * is being loaded from disk) and in the worst case to infinite recursion (an entity's death while loading
+     * triggers another load, whose entity's death triggers yet another load, etc.).
+     */
     fun getRemotePortal(): AbstractPortalEntity? {
         val remoteWorld = if (world.isRemote) {
             agent.remoteClientWorld ?: return null
         } else {
-            world.minecraftServer!!.getWorld(portal.remoteDimension ?: return null)
+            DimensionManager.getWorld(portal.remoteDimension ?: return null) ?: return null
         }
+        if (!remoteWorld.isBlockLoaded(portal.remotePosition)) return null
         val chunk = remoteWorld.getChunkFromBlockCoords(portal.remotePosition)
         val list = mutableListOf<AbstractPortalEntity>()
         chunk.getEntitiesOfTypeWithinAABB(javaClass, AxisAlignedBB(portal.remotePosition), list) {
