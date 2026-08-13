@@ -104,9 +104,18 @@ abstract class PortalRenderer<in P: Portal> {
             with (fogDetail?.color ?: Vec3d.ZERO) {
                 shader.getShaderUniformOrDefault("fogColor").set(x.toFloat(), y.toFloat(), z.toFloat())
             }
-            // Fade the remote view out (e.g. one-way portals fading after use) by scaling the shader output color.
-            shader.getShaderUniformOrDefault("opacity").set(portalOpacity(portal).toFloat())
+            // Fade the remote view out (e.g. one-way portals fading after use) by fading its alpha,
+            // so the background (sky) shows through instead of the view darkening to black.
+            val opacity = portalOpacity(portal)
+            shader.getShaderUniformOrDefault("opacity").set(opacity.toFloat())
             shader.useShader()
+            if (opacity < 1.0) {
+                // Enable alpha blending for the fade: alpha < 1 blends with what's already in the framebuffer
+                // (the sky), making the portal transparent instead of a black rectangle.
+                GlStateManager.enableBlend()
+                GlStateManager.blendFunc(
+                        GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA)
+            }
         }
         renderPortalSurface(portal, pos, renderPass, framebuffer != null)
         if (framebuffer == null) {
@@ -114,6 +123,13 @@ abstract class PortalRenderer<in P: Portal> {
             GlStateManager.enableTexture2D()
         } else {
             shader.endShader()
+            if (portalOpacity(portal) < 1.0) {
+                // Restore the default blend state so the fade does not leak into subsequent draws.
+                GlStateManager.disableBlend()
+                GlStateManager.tryBlendFuncSeparate(
+                        GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA,
+                        GlStateManager.SourceFactor.ONE, GlStateManager.DestFactor.ONE_MINUS_SRC_ALPHA)
+            }
         }
     }
 
