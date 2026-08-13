@@ -301,7 +301,21 @@ open class PortalAgent<P: Portal>(
      * May teleport some entities and as such **must not** be called while ticking the world.
      */
     open fun checkTeleportees() {
-        remoteAgent ?: return // not linked or remote not loaded
+        if (remoteAgent == null) {
+            // Remote portal (other end) is not loaded/linked -> the whole teleportation check is skipped. If a
+            // player is standing near this portal at that time they can walk right through it without being
+            // teleported. Log throttled so we can see how often / for how long this happens.
+            if (world.totalWorldTime % 20L == 0L) {
+                val playerNearby = world.playerEntities.any {
+                    it.entityBoundingBox.intersects(portal.localBoundingBox.grow(8.0))
+                }
+                if (playerNearby) {
+                    manager.logger.info("[tpdbg] checkTeleportees skipped: remoteAgent=null portal={} dim={} remoteDim={} playerNearby=true",
+                            portal.localPosition, portal.localDimension, portal.remoteDimension)
+                }
+            }
+            return
+        }
         val facingVec = portal.localFacing.directionVec.to3d().abs() * 2
         val largerBB = portal.localBoundingBox.grow(facingVec)
         val finerBBs = portal.localDetailedBounds.map { it.grow(facingVec) }
@@ -314,8 +328,22 @@ open class PortalAgent<P: Portal>(
 
             val entityBB = it.entityBoundingBox
             if (finerBBs.any(entityBB::intersects)) {
+                if (it is EntityPlayer && world.totalWorldTime % 20L == 0L) {
+                    manager.logger.info("[tpdbg] player {} entering check zone: portal={} bb={}",
+                            it.name, portal.localPosition, it.entityBoundingBox)
+                }
                 checkTeleportee(it)
             }
+        }
+        // Log whenever a player's previous-position record gets dropped (e.g. they left the check zone for a tick),
+        // as that silently disables the crossing detection for them.
+        if (world.totalWorldTime % 20L == 0L) {
+            val seen = seenEntities
+            lastTickPos.keys.filterTo(mutableListOf()) { e -> e is EntityPlayer && !seen.contains(e) }
+                    .forEach {
+                        manager.logger.info("[tpdbg] dropping lastTickPos for player {}: portal={} bb={}",
+                                it.name, portal.localPosition, it.entityBoundingBox)
+                    }
         }
         lastTickPos.keys.removeIf { !seenEntities.contains(it) }
     }
@@ -342,13 +370,29 @@ open class PortalAgent<P: Portal>(
         val entityPos = entity.pos + entity.eyeOffset
         val entityPrevPos = lastTickPos[entity].also {
             lastTickPos[entity] = entityPos
-        } ?: return
+        } ?: run {
+            // First tick inside the check zone: fall back to the entity's own previous-tick position (prevPos* is
+            // always maintained by the entity itself, regardless of whether we've been tracking it). Without this,
+            // a player jumping in from outside the zone whose crossing happened on (or right before) this tick
+            // would never be detected: we would only record the position and the side comparison would be lost,
+            // letting them fall through the portal without teleporting.
+            val prevPos = Vec3d(entity.prevPosX, entity.prevPosY, entity.prevPosZ) + entity.eyeOffset
+            if (entity is EntityPlayer) {
+                manager.logger.info("[tpdbg] player {} first tick in zone, using prevPos fallback: portal={} pos={} prevPos={}",
+                        entity.name, portal.localPosition, entityPos, prevPos)
+            }
+            prevPos
+        }
         val relPos = entityPos - portalPos
         val prevRelPos = entityPrevPos - portalPos
         val from = portal.localAxis.toFacing(relPos)
         val prevFrom = portal.localAxis.toFacing(prevRelPos)
 
         if (from != prevFrom) {
+            if (entity is EntityPlayer) {
+                manager.logger.info("[tpdbg] player {} crossing portal: portal={} from={} prevFrom={} pos={} prevPos={}",
+                        entity.name, portal.localPosition, from, prevFrom, entityPos, entityPrevPos)
+            }
             teleport(entity, prevFrom)
         }
     }
