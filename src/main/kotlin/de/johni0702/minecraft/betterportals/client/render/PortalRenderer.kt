@@ -90,6 +90,12 @@ abstract class PortalRenderer<in P: Portal> {
 
     protected open fun renderPortal(portal: P, pos: Vec3d, framebuffer: Framebuffer?, renderPass: RenderPass) {
         if (framebuffer == null) {
+            // During a fade the portal is drawn transparent; once its pass gets cancelled (fade == 0) there is no
+            // framebuffer content and drawing an opaque black quad here would flash a black rectangle right before
+            // the portal disappears. Skip the draw entirely so the (already faded) background stays visible.
+            if (portalOpacity(portal) < 1.0) {
+                return
+            }
             GlStateManager.disableTexture2D()
             GlStateManager.color(0f, 0f, 0f)
         } else {

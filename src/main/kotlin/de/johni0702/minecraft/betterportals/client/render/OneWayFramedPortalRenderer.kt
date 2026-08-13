@@ -32,7 +32,11 @@ open class OneWayFramedPortalRenderer(
     var fade = 1.0
 
     override fun portalOpacity(portal: FinitePortal): Double =
-        if (isTailEnd && isTailEndVisible) fade else 1.0
+        // Use fade directly (not gated by isTailEndVisible): when fade reaches 0 the tail side must stay fully
+        // transparent (alpha 0) so it blends into the background. Gating on isTailEndVisible would flip opacity
+        // back to 1.0 at the end of the fade (the flag flips to false exactly when fade hits 0), causing a
+        // full-brightness flash right before the portal disappears.
+        if (isTailEnd) fade else 1.0
 
     open fun shouldFaceBeRendered(facing: EnumFacing): Boolean {
         // There are usually no blocks at the tail end of the portal, so we need to make sure that, when looking at
