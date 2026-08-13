@@ -4,12 +4,14 @@ uniform sampler2D sampler;
 uniform vec2 screenSize;
 uniform float fogDensity;
 uniform vec3 fogColor;
+uniform float opacity;
 
 void main() {
     vec2 uv = gl_FragCoord.xy / screenSize;
     vec3 color = texture2D(sampler, uv).rgb;
     color = mix(color, gl_Fog.color.rgb, clamp((gl_FogFragCoord - gl_Fog.start) * gl_Fog.scale, 0.0, 1.0));
     color = mix(color, fogColor, fogDensity);
-    gl_FragColor = vec4(color, 1.0);
+    // Fade the remote view out (e.g. one-way portals fading after use) by scaling the output color.
+    gl_FragColor = vec4(color * opacity, 1.0);
     gl_FragDepth = gl_FragCoord.z;
 }

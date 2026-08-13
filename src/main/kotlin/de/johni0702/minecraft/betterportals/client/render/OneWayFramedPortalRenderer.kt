@@ -24,6 +24,16 @@ open class OneWayFramedPortalRenderer(
      */
     var isTailEndVisible = false
 
+    /**
+     * Fade-out progress of the tail end (1.0 = fully visible, 0.0 = fully faded). Only meaningful for the tail end
+     * while it is still considered visible; the remote view is alpha-blended according to this value so the portal
+     * fades out instead of popping away.
+     */
+    var fade = 1.0
+
+    override fun portalOpacity(portal: FinitePortal): Double =
+        if (isTailEnd && isTailEndVisible) fade else 1.0
+
     open fun shouldFaceBeRendered(facing: EnumFacing): Boolean {
         // There are usually no blocks at the tail end of the portal, so we need to make sure that, when looking at
         // the head, all frame blocks are rendered from the local world. Specifically, we only want to render the

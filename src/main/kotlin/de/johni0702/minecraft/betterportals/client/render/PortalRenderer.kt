@@ -104,6 +104,8 @@ abstract class PortalRenderer<in P: Portal> {
             with (fogDetail?.color ?: Vec3d.ZERO) {
                 shader.getShaderUniformOrDefault("fogColor").set(x.toFloat(), y.toFloat(), z.toFloat())
             }
+            // Fade the remote view out (e.g. one-way portals fading after use) by scaling the shader output color.
+            shader.getShaderUniformOrDefault("opacity").set(portalOpacity(portal).toFloat())
             shader.useShader()
         }
         renderPortalSurface(portal, pos, renderPass, framebuffer != null)
@@ -114,6 +116,12 @@ abstract class PortalRenderer<in P: Portal> {
             shader.endShader()
         }
     }
+
+    /**
+     * Opacity (0..1) with which the portal surface should be rendered. Subclasses may override this to fade the
+     * portal out (e.g. one-way portals fading after being used). Defaults to fully opaque.
+     */
+    protected open fun portalOpacity(portal: P): Double = 1.0
 
     protected abstract fun renderPortalSurface(portal: P, pos: Vec3d, renderPass: RenderPass, haveContent: Boolean)
 

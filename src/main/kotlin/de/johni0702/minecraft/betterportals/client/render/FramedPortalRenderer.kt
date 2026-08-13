@@ -101,7 +101,9 @@ open class FramedPortalRenderer(
 
     override fun doRenderTransparent(portal: FinitePortal, pos: Vec3d, partialTicks: Float) {
         super.doRenderTransparent(portal, pos, partialTicks)
-        val opacity = textureOpacity()
+        // Blend the transparent overlay (e.g. the vanilla end portal starfield) out together with the remote view
+        // so the whole portal fades uniformly instead of the overlay popping away first.
+        val opacity = textureOpacity() * portalOpacity(portal)
         if (opacity > 0) {
             renderPortalBlocks(portal, pos, opacity)
         }

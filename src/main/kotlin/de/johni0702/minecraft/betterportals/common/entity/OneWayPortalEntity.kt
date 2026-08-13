@@ -18,6 +18,8 @@ import net.minecraft.util.EnumFacing
 import net.minecraft.util.math.AxisAlignedBB
 import net.minecraft.util.math.BlockPos
 import net.minecraft.world.World
+import net.minecraftforge.fml.relauncher.Side
+import net.minecraftforge.fml.relauncher.SideOnly
 import kotlin.math.abs
 
 open class OneWayPortalEntityPortalAgent(
@@ -59,6 +61,11 @@ open class OneWayPortalEntityPortalAgent(
         if (entity is EntityPlayer && !oneWayEntity.isTailEnd) {
             val remotePortal = this.entity.getRemotePortal()
             (remotePortal as OneWayPortalEntity).isTailVisible = true
+            if (world.isRemote) {
+                // Re-start the client-side fade locally: the server-side flag may already be true, so the dataManager
+                // won't notify and the fade would otherwise remain 0 (invisible tail end).
+                (remotePortal as OneWayPortalEntity).restartFade()
+            }
         }
         super.checkTeleportee(entity)
     }
@@ -68,6 +75,9 @@ open class OneWayPortalEntityPortalAgent(
         val success = super.teleportPlayer(player, from)
         if (success) {
             (remotePortal as OneWayPortalEntity).isTailVisible = true
+            if (world.isRemote) {
+                (remotePortal as OneWayPortalEntity).restartFade()
+            }
         }
         return success
     }
@@ -80,7 +90,6 @@ open class OneWayPortalEntityPortalAgent(
         }
         return success
     }
-
     override fun teleportNonPlayerEntity(entity: Entity, from: EnumFacing) {
         super.teleportNonPlayerEntity(entity, from)
         (this.entity.getRemotePortal() as OneWayPortalEntity).isTailVisible = true
@@ -113,6 +122,12 @@ abstract class OneWayPortalEntity(
         private val IS_TAIL_END: DataParameter<Boolean> = EntityDataManager.createKey(OneWayPortalEntity::class.java, DataSerializers.BOOLEAN)
         private val ORIGINAL_TAIL_POS: DataParameter<BlockPos> = EntityDataManager.createKey(OneWayPortalEntity::class.java, DataSerializers.BLOCK_POS)
         private val IS_TAIL_VISIBLE: DataParameter<Boolean> = EntityDataManager.createKey(OneWayPortalEntity::class.java, DataSerializers.BOOLEAN)
+
+        /**
+         * Duration in ticks of the tail-end fade-out. The countdown starts as soon as the portal is used (i.e. as
+         * soon as a player/entity arrives at the new dimension through it), not when they leave the portal area.
+         */
+        const val FADE_TICKS = 40 // 2 seconds
     }
 
     override var isTailEnd: Boolean
@@ -128,7 +143,9 @@ abstract class OneWayPortalEntity(
         set(value) {
             dataManager[IS_TAIL_VISIBLE] = value
             if (value) {
-                travelingInProgressTimer = 20
+                // Fade-out starts immediately: the countdown runs while the portal is shown and reaches 0 exactly
+                // when the client-side fade animation is done.
+                travelingInProgressTimer = FADE_TICKS
             }
         }
 
@@ -181,25 +198,38 @@ abstract class OneWayPortalEntity(
     override fun notifyDataManagerChange(key: DataParameter<*>) {
         super.notifyDataManagerChange(key)
         if (world.isRemote && key == IS_TAIL_VISIBLE && isTailEnd) {
-            val newState = if (isTailVisible) portalFrameState else Blocks.AIR.defaultState
-            val oldState = if (isTailVisible) Blocks.AIR.defaultState else portalFrameState
-            val portalBlocks = portal.localBlocks
-            portalBlocks.forEach { pos ->
-                EnumFacing.HORIZONTALS.forEach { facing ->
-                    val neighbour = pos.offset(facing)
-                    if (neighbour !in portalBlocks) {
-                        if (world.getBlockState(neighbour) == oldState) {
-                            world.setBlockState(neighbour, newState)
-                        }
-                    }
-                }
+            if (isTailVisible) {
+                // Start the client-side fade-out: the remote view is shown and fades away over FADE_TICKS ticks.
+                fade = 1.0
+            } else if (fade > 0.0) {
+                // Server-side fade finished; wrap up quickly instead of popping the view away instantly.
+                fade = fade.coerceAtMost(1.0 / FADE_TICKS)
             }
         }
     }
 
     override val isTailEndVisible: Boolean
-        get() = isTailVisible
+        get() = if (world.isRemote) fade > 0.0 else isTailVisible
     var travelingInProgressTimer = 0
+
+    /**
+     * Client-side fade-out progress of the tail end (1.0 = fully visible, 0.0 = fully faded). Only meaningful while
+     * the tail end is visible; the remote view is faded out according to this value so the portal disappears
+     * smoothly instead of popping away.
+     */
+    @SideOnly(Side.CLIENT)
+    var fade = 0.0
+        private set
+
+    /**
+     * Restarts the client-side fade-out animation locally. Used when the player crosses the head end again while the
+     * server-side [isTailVisible] flag is already true: the dataManager value doesn't change (true -> true), so
+     * [notifyDataManagerChange] never fires and the fade would otherwise stay at 0 and the portal would be invisible.
+     */
+    @SideOnly(Side.CLIENT)
+    fun restartFade() {
+        fade = 1.0
+    }
 
     /**
      * The type of blocks which form the fake, client-side frame at the tail end of the portal.
@@ -228,20 +258,22 @@ abstract class OneWayPortalEntity(
     override fun onUpdate() {
         super.onUpdate()
 
+        if (world.isRemote && isTailEnd) {
+            // Client-side fade-out: starts when isTailVisible becomes true (player arrived at the new dimension)
+            // and blends the portal away over FADE_TICKS ticks.
+            if (fade > 0.0) {
+                fade = (fade - 1.0 / FADE_TICKS).coerceAtLeast(0.0)
+            }
+            return
+        }
+
         if (!world.isRemote && isTailEnd) {
             if (isTailEndVisible) {
-                // Check if everyone has left the portal
-                val inside = world.loadedEntityList.any { entity ->
-                    if (entity is OneWayPortalEntity) return@any false
-                    val entityAABB = entity.entityBoundingBox
-                    portal.localDetailedBounds.any { it.intersects(entityAABB) }
-                }
-                // and after one second, hide the portal
-                if (!inside) {
-                    travelingInProgressTimer--
-                    if (travelingInProgressTimer <= 0) {
-                        isTailVisible = false
-                    }
+                // Fade-out countdown starts immediately after the portal was used; we do not wait for entities to
+                // leave the portal area (the player arriving at the new dimension is what starts the fade).
+                travelingInProgressTimer--
+                if (travelingInProgressTimer <= 0) {
+                    isTailVisible = false
                 }
             }
 
