@@ -131,6 +131,12 @@ class EndPortalRenderer(
     }
 
     override fun renderPortalBlocks(portal: FinitePortal, pos: Vec3d, opacity: Double) {
+        // The tail end of a one-way portal is a temporary portal that fades away after use; do not render the
+        // starfield overlay there (the vanilla TESR's additive whirl layers cannot fade), so nothing is left
+        // behind once the remote view has faded out. The head end keeps the overlay as usual.
+        if (isTailEnd) {
+            return
+        }
         this.opacity = opacity
         val offset = pos - Vec3d(0.5, 0.5, 0.5)
 
