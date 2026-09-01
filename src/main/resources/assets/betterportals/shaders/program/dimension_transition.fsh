@@ -1,4 +1,14 @@
-#version 120
+// Native ESSL has no fixed-function combined inverse matrix.  The
+// compatibility wrappers expose the two inverse matrices individually, so use
+// their mathematically equivalent product there.  Native ESSL receives the
+// combined inverse from the renderer.
+#if defined(GL_ES) && !defined(MG_MOBILEGLUES)
+#define BP_NATIVE_ES 1
+precision mediump float;
+uniform mat4 bpInverseModelViewProjectionMatrix;
+#else
+#define BP_NATIVE_ES 0
+#endif
 
 varying vec2 vpos;
 
@@ -9,7 +19,11 @@ uniform float progress;
 float snoise(vec3 v);
 
 void main() {
-    vec4 pointInWorld = (gl_ModelViewProjectionMatrixInverse * vec4(vpos, 1.0, 1.0));
+#if BP_NATIVE_ES
+    vec4 pointInWorld = (bpInverseModelViewProjectionMatrix * vec4(vpos, 1.0, 1.0));
+#else
+    vec4 pointInWorld = ((gl_ModelViewMatrixInverse * gl_ProjectionMatrixInverse) * vec4(vpos, 1.0, 1.0));
+#endif
     pointInWorld /= pointInWorld.w;
     vec3 pointOnSphere = normalize(pointInWorld.xyz);
     float noise = snoise(pointOnSphere)/2 + 0.5;

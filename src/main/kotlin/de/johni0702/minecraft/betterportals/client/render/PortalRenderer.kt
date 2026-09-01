@@ -19,8 +19,18 @@ import org.apache.logging.log4j.LogManager
 abstract class PortalRenderer<in P: Portal> {
     companion object {
         private val mc = Minecraft.getMinecraft()
-        // Needs to be lazy as it'll fail until MC has loaded its resources (and it loads renderer before that)
-        private val shader by lazy { ShaderManager(mc.resourceManager, "betterportals:render_portal") }
+        private val logger = LogManager.getLogger("betterportals/render")
+        // Needs to be lazy as it'll fail until MC has loaded its resources (and it loads renderer before that).
+        // A renderer/driver which cannot compile the program must not take down the client while rendering an
+        // otherwise valid portal entity.
+        private val shader: ShaderManager? by lazy {
+            try {
+                ShaderManager(mc.resourceManager, "betterportals:render_portal")
+            } catch (t: Throwable) {
+                logger.error("Unable to initialize the portal shader; portal surfaces will be skipped", t)
+                null
+            }
+        }
 
         private val iChunWorldPortalsRenderLevel by lazy {
             try {
@@ -89,6 +99,7 @@ abstract class PortalRenderer<in P: Portal> {
     }
 
     protected open fun renderPortal(portal: P, pos: Vec3d, framebuffer: Framebuffer?, renderPass: RenderPass) {
+        var activeShader: ShaderManager? = null
         if (framebuffer == null) {
             // During a fade the portal is drawn transparent; once its pass gets cancelled (fade == 0) there is no
             // framebuffer content and drawing an opaque black quad here would flash a black rectangle right before
@@ -99,22 +110,27 @@ abstract class PortalRenderer<in P: Portal> {
             GlStateManager.disableTexture2D()
             GlStateManager.color(0f, 0f, 0f)
         } else {
-            shader.addSamplerTexture("sampler", framebuffer)
-            shader.getShaderUniformOrDefault("screenSize")
+            val portalShader = shader ?: return
+            activeShader = portalShader
+            portalShader.addSamplerTexture("sampler", framebuffer)
+            portalShader.getShaderUniformOrDefault("screenSize")
                     .set(framebuffer.framebufferWidth.toFloat(), framebuffer.framebufferHeight.toFloat())
             val portalPass = renderPass.children.find {
                 it.portalDetail?.parent == portal
             }
             val fogDetail = portalPass?.portalFogDetail
-            shader.getShaderUniformOrDefault("fogDensity").set(fogDetail?.density?.toFloat() ?: 0f)
+            portalShader.getShaderUniformOrDefault("fogDensity").set(fogDetail?.density?.toFloat() ?: 0f)
             with (fogDetail?.color ?: Vec3d.ZERO) {
-                shader.getShaderUniformOrDefault("fogColor").set(x.toFloat(), y.toFloat(), z.toFloat())
+                portalShader.getShaderUniformOrDefault("fogColor").set(x.toFloat(), y.toFloat(), z.toFloat())
             }
+            // Feed explicit matrices/fog values when a native ESSL branch is selected. The compatibility branch
+            // does not declare these uniforms, so the helper returns immediately there.
+            ShaderUniformUtils.setPortalState(portalShader)
             // Fade the remote view out (e.g. one-way portals fading after use) by fading its alpha,
             // so the background (sky) shows through instead of the view darkening to black.
             val opacity = portalOpacity(portal)
-            shader.getShaderUniformOrDefault("opacity").set(opacity.toFloat())
-            shader.useShader()
+            portalShader.getShaderUniformOrDefault("opacity").set(opacity.toFloat())
+            portalShader.useShader()
             if (opacity < 1.0) {
                 // Enable alpha blending for the fade: alpha < 1 blends with what's already in the framebuffer
                 // (the sky), making the portal transparent instead of a black rectangle.
@@ -128,7 +144,7 @@ abstract class PortalRenderer<in P: Portal> {
             GlStateManager.color(1f, 1f, 1f)
             GlStateManager.enableTexture2D()
         } else {
-            shader.endShader()
+            activeShader?.endShader()
             if (portalOpacity(portal) < 1.0) {
                 // Restore the default blend state so the fade does not leak into subsequent draws.
                 GlStateManager.disableBlend()

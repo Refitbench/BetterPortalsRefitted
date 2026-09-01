@@ -1,6 +1,7 @@
 {
     "vertex": "betterportals:render_portal",
     "fragment": "betterportals:render_portal",
+    "attributes": [ "Position" ],
     "samplers": [
         { "name": "sampler" }
     ],
@@ -8,6 +9,11 @@
         { "name": "screenSize", "type": "float", "count": 2, "values": [ 0.0, 0.0 ] },
         { "name": "fogDensity", "type": "float", "count": 1, "values": [ 0.0 ] },
         { "name": "fogColor", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
-        { "name": "opacity", "type": "float", "count": 1, "values": [ 1.0 ] }
+        { "name": "opacity", "type": "float", "count": 1, "values": [ 1.0 ] },
+        { "name": "bpModelViewMatrix", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+        { "name": "bpProjectionMatrix", "type": "matrix4x4", "count": 16, "values": [ 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0 ] },
+        { "name": "bpWorldFogColor", "type": "float", "count": 3, "values": [ 0.0, 0.0, 0.0 ] },
+        { "name": "bpFogStart", "type": "float", "count": 1, "values": [ 0.0 ] },
+        { "name": "bpFogScale", "type": "float", "count": 1, "values": [ 0.0 ] }
     ]
 }

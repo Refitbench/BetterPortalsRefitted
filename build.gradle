@@ -5,7 +5,7 @@ plugins {
     id 'maven-publish'
     id 'com.gradleup.shadow' version '9.5.1'
     id 'org.jetbrains.gradle.plugin.idea-ext' version '1.4.1'
-    id 'xyz.wagyourtail.unimined' version '1.4.36-kappa'
+    id 'xyz.wagyourtail.unimined' version '1.4.37-kappa'
     id 'net.kyori.blossom' version '2.2.0'
 }
 
@@ -101,7 +101,7 @@ unimined.minecraft {
         if (use_access_transformer.toBoolean()) {
             accessTransformer "${rootProject.projectDir}/src/main/resources/$access_transformer_locations"
         }
-        loader "0.6.10-alpha"
+        loader "0.6.12-alpha"
         runs.all {
             systemProperty("crl.dev.mixin", "mixins.betterportals.json,mixins.betterportals.transition.json,mixins.betterportals.view.json")
             jvmArgs('-Xmx4g')

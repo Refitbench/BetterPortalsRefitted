@@ -1,5 +1,6 @@
 package de.johni0702.minecraft.betterportals.impl.transition.client.renderer
 
+import de.johni0702.minecraft.betterportals.client.render.ShaderUniformUtils
 import de.johni0702.minecraft.betterportals.common.*
 import de.johni0702.minecraft.view.client.render.*
 import de.johni0702.minecraft.view.client.worldsManager
@@ -13,6 +14,7 @@ import net.minecraftforge.common.MinecraftForge
 import net.minecraftforge.fml.common.eventhandler.EventPriority
 import net.minecraftforge.fml.common.eventhandler.SubscribeEvent
 import net.minecraftforge.fml.common.gameevent.TickEvent
+import org.apache.logging.log4j.LogManager
 import org.lwjgl.opengl.GL11
 import java.time.Duration
 
@@ -25,7 +27,13 @@ internal class TransferToDimensionRenderer(
     }
     private val mc = Minecraft.getMinecraft()
 
-    private val shader = ShaderManager(mc.resourceManager, "betterportals:dimension_transition")
+    private val shader: ShaderManager? = try {
+        ShaderManager(mc.resourceManager, "betterportals:dimension_transition")
+    } catch (t: Throwable) {
+        LogManager.getLogger("betterportals/render").error(
+                "Unable to initialize the dimension transition shader; transition rendering will be skipped", t)
+        null
+    }
     private val eventHandler = EventHandler()
 
     private val fromWorld = mc.world
@@ -80,11 +88,13 @@ internal class TransferToDimensionRenderer(
         val childPass = rootPass.children.find { it.get<TransferToDimensionRenderer>() == this } ?: return
         val framebuffer = childPass.framebuffer ?: return
 
-        shader.addSamplerTexture("sampler", framebuffer)
-        shader.getShaderUniformOrDefault("screenSize")
+        val transitionShader = shader ?: return
+        transitionShader.addSamplerTexture("sampler", framebuffer)
+        transitionShader.getShaderUniformOrDefault("screenSize")
                 .set(framebuffer.framebufferWidth.toFloat(), framebuffer.framebufferHeight.toFloat())
-        shader.getShaderUniformOrDefault("progress").set(getProgress(partialTicks))
-        shader.useShader()
+        transitionShader.getShaderUniformOrDefault("progress").set(getProgress(partialTicks))
+        ShaderUniformUtils.setInverseModelViewProjection(transitionShader)
+        transitionShader.useShader()
 
         val tessellator = Tessellator.getInstance()
         tessellator.buffer.apply {
@@ -96,7 +106,7 @@ internal class TransferToDimensionRenderer(
         }
         tessellator.draw()
 
-        shader.endShader()
+        transitionShader.endShader()
     }
 
     private inner class EventHandler {
@@ -110,7 +120,7 @@ internal class TransferToDimensionRenderer(
             val manager = Minecraft.getMinecraft().worldsManager ?: return
             if (fromWorld !in manager.worlds || toWorld !in manager.worlds || getProgress(0f) >= 1) {
                 registered = false
-                shader.deleteShader()
+                shader?.deleteShader()
                 whenDone()
             }
         }

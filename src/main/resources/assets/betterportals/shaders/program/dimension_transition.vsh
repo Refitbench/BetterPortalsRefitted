@@ -1,4 +1,7 @@
-#version 120
+// Keep the same source usable by native ESSL and the compatibility wrappers.
+#if defined(GL_ES) && !defined(MG_MOBILEGLUES)
+precision highp float;
+#endif
 
 attribute vec3 pos;
 
