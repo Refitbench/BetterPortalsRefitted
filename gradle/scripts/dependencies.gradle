@@ -26,6 +26,10 @@ repositories {
         }
     }
     mavenCentral()
+    maven {
+        name = 'JitPack'
+        url = 'https://jitpack.io'
+    }
     mavenLocal() // Must be last for caching to work
 }
 
@@ -42,6 +46,15 @@ dependencies {
     compileOnly("org.embeddedt.celeritas:celeritas-common:$celeritasVersion") {
         transitive = false
     }
+    // The _Actinium mixin variants bind to Actinium's own renderer namespace (com.dhj.actinium.*).
+    // JitPack builds Actinium straight from GitHub (its "Fix JitPack Maven coordinates" commit
+    // 34dca21 made its publication coordinates match com.github.DHJComical:Actinium); pin a commit
+    // that JitPack has already built and bump it when Actinium-side changes are needed.
+    modCompileOnly("com.github.DHJComical:Actinium:${actinium_version}") {
+        transitive = false
+    }
+    // The _Celeritas mixins reference Celeritas' relocated joml namespace, provided by the
+    // celeritas-forge jar above (Actinium now ships the same shadow layout at runtime).
 
     modImplementation ('curse.maven:the-twilight-forest-deforestation-edition-1063334:7846443')
 

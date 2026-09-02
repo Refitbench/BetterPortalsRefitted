@@ -19,7 +19,14 @@ public class BetterPortalsMixinConfigPlugin implements IMixinConfigPlugin {
     private final boolean hasSponge = Launch.classLoader.isClassExist("org.spongepowered.common.SpongePlatform");
     private final boolean hasVC = Launch.classLoader.isClassExist("org.vivecraft.asm.VivecraftASMTransformer");
     private final boolean hasCeleritas = Launch.classLoader.isClassExist("org.taumc.celeritas.CeleritasVintage");
+    private final boolean hasActinium = Launch.classLoader.isClassExist("com.dhj.actinium.render.terrain.ActiniumWorldRenderer");
     private final boolean hasNothirium = Launch.classLoader.isClassExist("meldexun.nothirium.mc.renderer.ChunkRenderManager");
+    // Actinium exposes the Celeritas compat bridge (so hasCeleritas is also true under it) and now
+    // ships the same relocated-joml shadow layout as upstream Celeritas, but it keeps its own
+    // renderer namespace (com.dhj.actinium instead of org.taumc.celeritas). Mixins binding to those
+    // renderer classes must therefore only apply on a real upstream Celeritas layout; Actinium uses
+    // dedicated _Actinium variants instead.
+    private final boolean hasCeleritasLayout = hasCeleritas && !hasActinium;
     private final boolean vcVR = hasVC && Launch.classLoader.isClassExist("org.vivecraft.provider.MCOpenVR");
     private final boolean vcNonVR = hasVC && !vcVR;
 
@@ -32,7 +39,8 @@ public class BetterPortalsMixinConfigPlugin implements IMixinConfigPlugin {
         logger.debug("hasCC: {}", hasCC);
         logger.debug("hasSponge: {}", hasSponge);
         logger.debug("hasVC: {} (VR: {})", hasVC, vcVR);
-        logger.debug("hasCeleritas: {}", hasCeleritas);
+        logger.debug("hasCeleritas: {} (upstream layout: {})", hasCeleritas, hasCeleritasLayout);
+        logger.debug("hasActinium: {}", hasActinium);
         logger.debug("hasNothirium: {}", hasNothirium);
         if (hasCeleritas && hasNothirium) {
             logger.warn("Both Celeritas and Nothirium are installed; BetterPortals will use Celeritas terrain compatibility");
@@ -50,7 +58,10 @@ public class BetterPortalsMixinConfigPlugin implements IMixinConfigPlugin {
             logger.debug("Skipping {} because Nothirium owns RenderGlobal terrain rendering", mixinClassName);
             return false;
         }
-        if (mixinClassName.endsWith("_Celeritas")) return hasCeleritas;
+        if (mixinClassName.endsWith("_Celeritas")) {
+            return isCeleritasLayoutSensitive(mixinClassName) ? hasCeleritasLayout : hasCeleritas;
+        }
+        if (mixinClassName.endsWith("_Actinium")) return hasActinium;
         if (mixinClassName.endsWith("_Nothirium")) return hasNothirium && !hasCeleritas;
         if (vcVR) {
             if (mixinClassName.endsWith("MixinEntityRenderer_NoOF")) {
@@ -75,6 +86,17 @@ public class BetterPortalsMixinConfigPlugin implements IMixinConfigPlugin {
         if (mixinClassName.endsWith("_VC")) return vcVR;
         if (mixinClassName.endsWith("_NoVC")) return !vcVR;
         return true;
+    }
+
+    /**
+     * Whether the given _Celeritas mixin binds to org.taumc.celeritas renderer classes, which only
+     * exist in upstream Celeritas. Actinium mirrors the shadow joml layout (so the viewport mixins
+     * apply unchanged) but keeps its renderer classes under com.dhj.actinium and provides dedicated
+     * _Actinium variants for them.
+     */
+    private boolean isCeleritasLayoutSensitive(String mixinClassName) {
+        return mixinClassName.endsWith("MixinVintageRenderSectionManager_Celeritas")
+                || mixinClassName.endsWith("MixinCeleritasWorldRenderer_Celeritas");
     }
 
     private boolean isCeleritasIncompatibleTerrainMixin(String mixinClassName) {
