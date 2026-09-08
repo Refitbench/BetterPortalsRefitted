@@ -19,6 +19,7 @@ internal val LOGGER = LogManager.getLogger("betterportals/portal")
 internal lateinit var preventFallDamageGetter: () -> Boolean
 internal lateinit var bounceEnderPearlsGetter: () -> Boolean
 internal lateinit var maxRenderRecursionGetter: () -> Int
+internal lateinit var debugLoggingGetter: () -> Boolean
 
 fun initPortal(
     mod: Any,
@@ -28,10 +29,12 @@ fun initPortal(
     bounceEnderPearls: () -> Boolean,
     dropRemoteSound: () -> Boolean,
     maxRenderRecursion: () -> Int,
+    debugLogging: () -> Boolean,
 ) {
     preventFallDamageGetter = preventFallDamage
     bounceEnderPearlsGetter = bounceEnderPearls
     maxRenderRecursionGetter = maxRenderRecursion
+    debugLoggingGetter = debugLogging
 
     init {
         Net.INSTANCE // initialize via <init>

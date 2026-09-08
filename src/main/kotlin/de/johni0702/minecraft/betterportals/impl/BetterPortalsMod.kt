@@ -82,6 +82,7 @@ object BetterPortalsMod : ViewAPI by ViewAPIImpl, BetterPortalsAPI by BetterPort
             bounceEnderPearls = { BPConfig.bounceEnderPearls },
             dropRemoteSound = { !BPConfig.soundThroughPortals },
             maxRenderRecursion = { if (BPConfig.seeThroughPortals) BPConfig.recursionLimit else 0 },
+            debugLogging = { BPConfig.debugLogging },
         )
 
         initVanilla(

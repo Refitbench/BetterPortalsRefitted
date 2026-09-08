@@ -114,6 +114,13 @@ interface PortalManager {
      */
     val bounceEnderPearls: Boolean
         get() = true
+
+    /**
+     * Whether to emit frequent `[tpdbg]` diagnostic log messages (e.g. per-tick teleportation checks).
+     * When disabled, such messages are suppressed entirely.
+     */
+    val debugLogging: Boolean
+        get() = false
 }
 
 val World.portalManager get() = BetterPortalsAPI.instance.getPortalManager(this)
@@ -316,7 +323,7 @@ open class PortalAgent<P: Portal>(
                 val playerNearby = world.playerEntities.any {
                     it.entityBoundingBox.intersects(portal.localBoundingBox.grow(8.0))
                 }
-                if (playerNearby) {
+                if (playerNearby && manager.debugLogging) {
                     manager.logger.info("[tpdbg] checkTeleportees skipped: remoteAgent=null portal={} dim={} remoteDim={} playerNearby=true",
                             portal.localPosition, portal.localDimension, portal.remoteDimension)
                 }
@@ -335,7 +342,7 @@ open class PortalAgent<P: Portal>(
 
             val entityBB = it.entityBoundingBox
             if (finerBBs.any(entityBB::intersects)) {
-                if (it is EntityPlayer && world.totalWorldTime % 20L == 0L) {
+                if (it is EntityPlayer && world.totalWorldTime % 20L == 0L && manager.debugLogging) {
                     manager.logger.info("[tpdbg] player {} entering check zone: portal={} bb={}",
                             it.name, portal.localPosition, it.entityBoundingBox)
                 }
@@ -344,7 +351,7 @@ open class PortalAgent<P: Portal>(
         }
         // Log whenever a player's previous-position record gets dropped (e.g. they left the check zone for a tick),
         // as that silently disables the crossing detection for them.
-        if (world.totalWorldTime % 20L == 0L) {
+        if (world.totalWorldTime % 20L == 0L && manager.debugLogging) {
             val seen = seenEntities
             lastTickPos.keys.filterTo(mutableListOf()) { e -> e is EntityPlayer && !seen.contains(e) }
                     .forEach {
@@ -384,7 +391,7 @@ open class PortalAgent<P: Portal>(
             // would never be detected: we would only record the position and the side comparison would be lost,
             // letting them fall through the portal without teleporting.
             val prevPos = Vec3d(entity.prevPosX, entity.prevPosY, entity.prevPosZ) + entity.eyeOffset
-            if (entity is EntityPlayer) {
+            if (entity is EntityPlayer && manager.debugLogging) {
                 manager.logger.info("[tpdbg] player {} first tick in zone, using prevPos fallback: portal={} pos={} prevPos={}",
                         entity.name, portal.localPosition, entityPos, prevPos)
             }
@@ -400,12 +407,14 @@ open class PortalAgent<P: Portal>(
                 // Ender pearls do not pass through the portal: reflect them back off the portal surface instead of
                 // teleporting them to the remote side. This runs on both the server (authoritative) and the client
                 // (cosmetic, to keep the pearl from visibly passing through the portal before the next tracker update).
-                manager.logger.info("[tpdbg] ender pearl {} bouncing off portal: portal={} from={} prevFrom={} pos={}",
-                        entity.entityId, portal.localPosition, from, prevFrom, entityPos)
+                if (manager.debugLogging) {
+                    manager.logger.info("[tpdbg] ender pearl {} bouncing off portal: portal={} from={} prevFrom={} pos={}",
+                            entity.entityId, portal.localPosition, from, prevFrom, entityPos)
+                }
                 bounceBack(entity)
                 return
             }
-            if (entity is EntityPlayer) {
+            if (entity is EntityPlayer && manager.debugLogging) {
                 manager.logger.info("[tpdbg] player {} crossing portal: portal={} from={} prevFrom={} pos={} prevPos={}",
                         entity.name, portal.localPosition, from, prevFrom, entityPos, entityPrevPos)
             }

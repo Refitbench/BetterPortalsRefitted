@@ -41,6 +41,7 @@ internal class PortalManagerImpl(
     override val logger: Logger = LOGGER
     override val preventFallAfterVerticalPortal get() = preventFallDamageGetter()
     override val bounceEnderPearls get() = bounceEnderPearlsGetter()
+    override val debugLogging get() = debugLoggingGetter()
 
     private val passiveAccessors = mutableListOf<PortalAccessor>()
     private val activeAccessors = mutableListOf<PortalAccessor>()
